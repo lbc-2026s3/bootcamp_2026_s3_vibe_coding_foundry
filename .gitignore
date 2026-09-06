@@ -20,3 +20,4 @@ docs/
 !.env.example
 
 broadcast/
+deployments/

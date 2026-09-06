@@ -1,19 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {Script} from "forge-std/Script.sol";
 import {MyTokenV1} from "../src/MyTokenV1.sol";
+import {BaseScript} from "./BaseScript.sol";
 
-contract MyTokenV1Script is Script {
+contract MyTokenV1Script is BaseScript {
     MyTokenV1 public token;
 
-    function setUp() public {}
-
-    function run() public {
-        vm.startBroadcast();
-
+    function run() public broadcaster {
         token = new MyTokenV1();
-
-        vm.stopBroadcast();
+        saveContract("MyTokenV1", address(token));
     }
 }
