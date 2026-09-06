@@ -3,7 +3,7 @@ pragma solidity ^0.8.13;
 
 import {MyTokenV1} from "../src/MyTokenV1.sol";
 import {TokenBankV1} from "../src/TokenBankV1.sol";
-import {BaseScript} from "./BaseScript.sol";
+import {BaseScript} from "./BaseScript.s.sol";
 
 contract TokenBankV1Script is BaseScript {
     MyTokenV1 public token;
