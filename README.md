@@ -47,20 +47,10 @@ $ anvil
 
 ### Deploy
 
+#### src/Counter.sol
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
+$ source .env
+$ forge script script/Counter.s.sol:CounterScript --rpc-url sepolia --broadcast --private-key $SEPOLIA_PRIVATE_KEY
+$ cast send <contract address> "setNumber(uint256)" 42 --rpc-url sepolia --private-key $SEPOLIA_PRIVATE_KEY
+$ cast call <contract address> "number()" --rpc-url sepolia
 ```
