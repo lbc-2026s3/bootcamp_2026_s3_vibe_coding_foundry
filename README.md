@@ -54,3 +54,10 @@ $ forge script script/Counter.s.sol:CounterScript --rpc-url sepolia --broadcast 
 $ cast send <contract address> "setNumber(uint256)" 42 --rpc-url sepolia --private-key $SEPOLIA_PRIVATE_KEY
 $ cast call <contract address> "number()" --rpc-url sepolia
 ```
+
+
+### Verify
+
+```bash
+./script/verify.sh src/MyTokenV1.sol:MyTokenV1 0x8b0F9023d0a917503Cd247bD9985B6527E4fA846
+```
