@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC1363Receiver} from "openzeppelin-contracts/contracts/interfaces/IERC1363Receiver.sol";
 import {IERC1363Spender} from "openzeppelin-contracts/contracts/interfaces/IERC1363Spender.sol";
 
@@ -13,6 +14,8 @@ import {TokenBankV2} from "./TokenBankV2.sol";
 /// 2. transferAndCall / transferFromAndCall -> onTransferReceived
 /// 3. approveAndCall -> onApprovalReceived(内部 transferFrom 拉款入账)
 contract TokenBankERC1363 is TokenBankV2, IERC1363Receiver, IERC1363Spender {
+    using SafeERC20 for IERC20;
+
     constructor(IERC20 token_) TokenBankV2(token_) {}
 
     /// @inheritdoc IERC1363Receiver
@@ -21,7 +24,11 @@ contract TokenBankERC1363 is TokenBankV2, IERC1363Receiver, IERC1363Spender {
         address from,
         uint256 value,
         bytes calldata /* data */
-    ) external override returns (bytes4) {
+    )
+        external
+        override
+        returns (bytes4)
+    {
         require(msg.sender == address(token), "Invalid token");
         require(value > 0, "Zero deposit");
         require(from != address(0), "Zero from");
@@ -33,7 +40,11 @@ contract TokenBankERC1363 is TokenBankV2, IERC1363Receiver, IERC1363Spender {
     }
 
     /// @inheritdoc IERC1363Spender
-    function onApprovalReceived(address owner, uint256 value, bytes calldata /* data */ )
+    function onApprovalReceived(
+        address owner,
+        uint256 value,
+        bytes calldata /* data */
+    )
         external
         override
         returns (bytes4)
@@ -43,7 +54,7 @@ contract TokenBankERC1363 is TokenBankV2, IERC1363Receiver, IERC1363Spender {
         require(owner != address(0), "Zero owner");
 
         // 普通 transferFrom 不会再回调 onTransferReceived,只记一次账
-        token.transferFrom(owner, address(this), value);
+        token.safeTransferFrom(owner, address(this), value);
         balances[owner] += value;
         emit Deposit(owner, value);
 
