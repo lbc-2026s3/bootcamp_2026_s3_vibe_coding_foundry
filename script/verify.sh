@@ -95,6 +95,9 @@ ADDRESS="${POSITIONAL[1]}"
 # ---------- 环境检查 ----------
 : "${ETHERSCAN_API_KEY:?缺少 ETHERSCAN_API_KEY，请检查 .env}"
 
+# 确保无论从哪个目录调用，都能解析 foundry.toml 与 src/... 路径
+cd "$PROJECT_ROOT"
+
 # ---------- 执行验证 ----------
 CMD=(forge verify-contract "$ADDRESS" "$CONTRACT" --chain "$CHAIN" --etherscan-api-key "$ETHERSCAN_API_KEY")
 [[ -n "$CONSTRUCTOR_HEX" ]] && CMD+=(--constructor-args "$CONSTRUCTOR_HEX")
