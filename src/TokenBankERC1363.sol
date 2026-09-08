@@ -5,6 +5,8 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC1363Receiver} from "openzeppelin-contracts/contracts/interfaces/IERC1363Receiver.sol";
 import {IERC1363Spender} from "openzeppelin-contracts/contracts/interfaces/IERC1363Spender.sol";
+import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
+import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
 import {TokenBankV2} from "./TokenBankV2.sol";
 
@@ -13,10 +15,17 @@ import {TokenBankV2} from "./TokenBankV2.sol";
 /// 1. ERC20: approve + deposit()(父合约,普通 transferFrom 不触发 1363 回调,无双重记账)
 /// 2. transferAndCall / transferFromAndCall -> onTransferReceived
 /// 3. approveAndCall -> onApprovalReceived(内部 transferFrom 拉款入账)
-contract TokenBankERC1363 is TokenBankV2, IERC1363Receiver, IERC1363Spender {
+/// @dev 通过 ERC-165 声明 IERC1363Receiver / IERC1363Spender,便于外部探测(OZ ERC1363 回调本身靠 try/call)
+contract TokenBankERC1363 is TokenBankV2, ERC165, IERC1363Receiver, IERC1363Spender {
     using SafeERC20 for IERC20;
 
     constructor(IERC20 token_) TokenBankV2(token_) {}
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
+        return interfaceId == type(IERC1363Receiver).interfaceId || interfaceId == type(IERC1363Spender).interfaceId
+            || super.supportsInterface(interfaceId);
+    }
 
     /// @inheritdoc IERC1363Receiver
     function onTransferReceived(

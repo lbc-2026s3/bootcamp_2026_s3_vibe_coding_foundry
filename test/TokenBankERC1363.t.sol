@@ -3,7 +3,10 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC1363} from "openzeppelin-contracts/contracts/interfaces/IERC1363.sol";
+import {IERC1363Receiver} from "openzeppelin-contracts/contracts/interfaces/IERC1363Receiver.sol";
+import {IERC1363Spender} from "openzeppelin-contracts/contracts/interfaces/IERC1363Spender.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
 import {MyTokenERC1363} from "../src/MyTokenERC1363.sol";
 import {TokenBankERC1363} from "../src/TokenBankERC1363.sol";
@@ -26,6 +29,14 @@ contract TokenBankERC1363Test is Test {
     function _giveTokens(address to, uint256 amount) internal {
         vm.prank(deployer);
         token.transfer(to, amount);
+    }
+
+    function test_SupportsInterface_ERC165_And_ERC1363Hooks() public view {
+        assertTrue(bank.supportsInterface(type(IERC165).interfaceId));
+        assertTrue(bank.supportsInterface(type(IERC1363Receiver).interfaceId));
+        assertTrue(bank.supportsInterface(type(IERC1363Spender).interfaceId));
+        assertFalse(bank.supportsInterface(0xffffffff));
+        assertFalse(bank.supportsInterface(type(IERC1363).interfaceId));
     }
 
     function test_Deposit_ViaApproveAndDeposit() public {
