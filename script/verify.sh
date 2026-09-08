@@ -99,12 +99,24 @@ ADDRESS="${POSITIONAL[1]}"
 cd "$PROJECT_ROOT"
 
 # ---------- 执行验证 ----------
-CMD=(forge verify-contract "$ADDRESS" "$CONTRACT" --chain "$CHAIN" --etherscan-api-key "$ETHERSCAN_API_KEY")
+# 不把 key 放进 CLI 参数（避免进程列表/历史泄露）；forge 会读环境变量 ETHERSCAN_API_KEY
+CMD=(forge verify-contract "$ADDRESS" "$CONTRACT" --chain "$CHAIN")
 [[ -n "$CONSTRUCTOR_HEX" ]] && CMD+=(--constructor-args "$CONSTRUCTOR_HEX")
 [[ -n "$WATCH_FLAG" ]] && CMD+=("$WATCH_FLAG")
+
+# forge 报错时会把带 apikey= 的完整 URL 打到日志；过滤后再输出
+redact_secrets() {
+  sed -E 's/(apikey=)[^&"'"'"' ]+/\1***/gi; s/(ETHERSCAN_API_KEY[=:])[^[:space:]]+/\1***/gi'
+}
 
 echo "验证合约: $CONTRACT @ $ADDRESS (chain: $CHAIN)"
 if [[ -n "$CONSTRUCTOR_HEX" ]]; then
   echo "构造参数: $CONSTRUCTOR_HEX"
 fi
-"${CMD[@]}"
+
+set +e
+OUTPUT="$("${CMD[@]}" 2>&1)"
+STATUS=$?
+set -e
+printf '%s\n' "$OUTPUT" | redact_secrets
+exit "$STATUS"

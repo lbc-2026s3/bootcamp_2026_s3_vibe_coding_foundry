@@ -1,0 +1,5 @@
+metadata:
+ipfs://QmTg75dRHikf7joDYxiMMznQh9MSpF27MVfzeZi6eT94TR
+
+example:
+nft.mint(0xCfEAe9d951107B18c3495247D8249AD005175707, "ipfs://QmTg75dRHikf7joDYxiMMznQh9MSpF27MVfzeZi6eT94TR")

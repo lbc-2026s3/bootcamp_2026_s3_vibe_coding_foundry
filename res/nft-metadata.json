@@ -1,0 +1,24 @@
+{
+    "name": "The Bulls #1",
+    "symbol": "BULLS",
+    "description": "THE BULLPEN - LAUNCHED SUMMER 2026 ON THE SOLANA BLOCKCHAIN.",
+    "image": "ipfs://QmUByAb8K5YV46sK1Z8NLvBLfxVGFTMJKE6ddtZfZKLaQT",
+    "attributes": [
+        {
+            "trait_type": "Background",
+            "value": "Putty"
+        },
+        {
+            "trait_type": "Skin",
+            "value": "Off-White"
+        },
+        {
+            "trait_type": "Outfit",
+            "value": "Tactical Vest"
+        },
+        {
+            "trait_type": "Eyes",
+            "value": "Gunmetal Glasses"
+        }
+    ]
+}
