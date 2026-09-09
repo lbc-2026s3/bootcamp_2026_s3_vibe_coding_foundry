@@ -145,6 +145,31 @@ contract NFTMarketTest is Test {
         assertEq(listedPrice, 0);
     }
 
+    function test_List_ViaSafeTransferFromWithPriceData() public {
+        vm.expectEmit(true, true, false, true, address(market));
+        emit Listed(0, seller, PRICE);
+
+        vm.prank(seller);
+        nft.safeTransferFrom(seller, address(market), 0, abi.encode(PRICE));
+
+        assertEq(nft.ownerOf(0), address(market));
+        (address listedSeller, uint256 listedPrice) = market.listings(0);
+        assertEq(listedSeller, seller);
+        assertEq(listedPrice, PRICE);
+    }
+
+    function test_RevertWhen_SafeTransferFrom_InvalidData() public {
+        vm.prank(seller);
+        vm.expectRevert(NFTMarket.InvalidData.selector);
+        nft.safeTransferFrom(seller, address(market), 0, bytes("bad"));
+    }
+
+    function test_RevertWhen_SafeTransferFrom_ZeroPrice() public {
+        vm.prank(seller);
+        vm.expectRevert(NFTMarket.ZeroPrice.selector);
+        nft.safeTransferFrom(seller, address(market), 0, abi.encode(uint256(0)));
+    }
+
     function test_SupportsInterface_ERC1363Hooks() public view {
         assertTrue(market.supportsInterface(type(IERC165).interfaceId));
         assertTrue(market.supportsInterface(type(IERC1363Receiver).interfaceId));

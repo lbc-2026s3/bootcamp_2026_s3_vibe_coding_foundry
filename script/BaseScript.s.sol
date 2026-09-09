@@ -1,17 +1,86 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Script.sol";
+import {Script, console} from "forge-std/Script.sol";
+import {VmSafe} from "forge-std/Vm.sol";
 
 abstract contract BaseScript is Script {
     /// @notice 由 broadcaster 写入的部署人地址,saveContract 读此字段而非直接用 msg.sender
     address internal deployer;
 
+    struct PendingSave {
+        string name;
+        address addr;
+    }
+
+    /// @dev saveContract 先入队；broadcaster 在 stopBroadcast 之后统一落盘并打印
+    PendingSave[] private _pendingSaves;
+
     function setUp() public virtual {}
 
+    /// @notice 记录待保存的部署结果（真正写文件 / 打日志在 stopBroadcast 之后）
     function saveContract(string memory name, address addr) internal {
         require(deployer != address(0), "deployer unset; use broadcaster");
+        _pendingSaves.push(PendingSave({name: name, addr: addr}));
+    }
 
+    function _flushPendingSaves() private {
+        // dry-run（无 --broadcast/--resume）不得覆盖真实部署产物
+        if (
+            !vm.isContext(VmSafe.ForgeContext.ScriptBroadcast)
+                && !vm.isContext(VmSafe.ForgeContext.ScriptResume)
+        ) {
+            console.log("Skipping deployments write (forge script without --broadcast/--resume)");
+            delete _pendingSaves;
+            return;
+        }
+
+        uint256 n = _pendingSaves.length;
+
+        // forge 会先打印脚本 == Logs ==，再打印 onchain 收据摘要，脚本内无法把日志挪到摘要之后。
+        // 因此地址以 deployments/LATEST.txt 为准；部署命令末尾加 `&& cat deployments/LATEST.txt`。
+        string memory writtenAt = _formatBeijingTime(vm.unixTime() / 1000);
+        vm.createDir("deployments", true);
+
+        if (n == 0) {
+            // 本次广播未调用 saveContract：清掉旧地址，避免误用上一次部署结果
+            vm.writeFile(
+                "deployments/LATEST.txt",
+                string.concat(
+                    "writtenAt: ",
+                    writtenAt,
+                    "\nchainId: ",
+                    vm.toString(block.chainid),
+                    "\n----------------------------------------\n",
+                    "No contracts saved: this script did not call saveContract().\n",
+                    "[Warning] Old addresses cleared - do not reuse previous LATEST.txt entries.\n"
+                )
+            );
+            console.log("No saveContract() in this run - deployments/LATEST.txt cleared");
+            return;
+        }
+
+        string memory latest = string.concat(
+            "writtenAt: ",
+            writtenAt,
+            "\nchainId: ",
+            vm.toString(block.chainid),
+            "\n----------------------------------------\n",
+            "Correct deployed addresses (ignore forge receipt Contract Address for CALLs):\n"
+        );
+        for (uint256 i = 0; i < n; i++) {
+            PendingSave memory item = _pendingSaves[i];
+            _writeDeployment(item.name, item.addr);
+            latest = string.concat(latest, item.name, " => ", vm.toString(item.addr), "\n");
+        }
+        vm.writeFile("deployments/LATEST.txt", latest);
+
+        console.log("Addresses written to deployments/LATEST.txt - after forge finishes, run: cat deployments/LATEST.txt");
+
+        delete _pendingSaves;
+    }
+
+    function _writeDeployment(string memory name, address addr) private {
         string memory chainId = vm.toString(block.chainid);
         string memory dirPath = string.concat("deployments/", name);
 
@@ -31,7 +100,7 @@ abstract contract BaseScript is Script {
         string memory fullFilePath = string.concat(dirPath, "/", name, "_", chainId, ".json");
 
         try vm.writeJson(finalJson, fullFilePath) {
-            // success
+            // 不在此处 console.log 详细地址：会被 forge 印在收据摘要之前，容易和错误摘要混在一起
         } catch {
             revert(
                 string.concat(
@@ -44,7 +113,7 @@ abstract contract BaseScript is Script {
     }
 
     /// @notice 将 Unix 秒时间戳格式化为北京时间字符串，如 "2026-09-07 11:16:00 CST"
-    function _formatBeijingTime(uint256 unixSeconds) private view returns (string memory) {
+    function _formatBeijingTime(uint256 unixSeconds) private pure returns (string memory) {
         uint256 ts = unixSeconds + 8 hours;
 
         uint256 secs = ts % 60;
@@ -90,7 +159,7 @@ abstract contract BaseScript is Script {
         }
     }
 
-    function _pad2(uint256 n) private view returns (string memory) {
+    function _pad2(uint256 n) private pure returns (string memory) {
         if (n >= 10) return vm.toString(n);
         return string.concat("0", vm.toString(n));
     }
@@ -101,5 +170,7 @@ abstract contract BaseScript is Script {
         vm.startBroadcast();
         _;
         vm.stopBroadcast();
+        // 广播结束后再写 deployments / 打日志，避免和 forge tx 摘要交错
+        _flushPendingSaves();
     }
 }

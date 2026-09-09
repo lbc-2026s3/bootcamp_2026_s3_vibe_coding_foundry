@@ -12,6 +12,9 @@ import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC
 import {ReentrancyGuard} from "openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
 /// @notice NFTMarket: 用 MyTokenERC1363 购买 MyERC721NFT
+/// @dev 上架路径:
+/// 1. approve + list()
+/// 2. safeTransferFrom(seller, market, tokenId, abi.encode(price)) -> onERC721Received
 /// @dev 购买路径:
 /// 1. ERC20: approve + buyNFT()
 /// 2. transferAndCall / transferFromAndCall -> onTransferReceived（data = abi.encode(tokenId)）
@@ -127,7 +130,32 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, IERC1363Spender, ERC165
     }
 
     /// @inheritdoc IERC721Receiver
-    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+    /// @dev 两种来源：
+    /// 1) list() 已写入挂单后再 pull（data 可为空）
+    /// 2) 卖家直接 safeTransferFrom(..., data=abi.encode(price))，无需 approve
+    function onERC721Received(address, address from, uint256 tokenId, bytes calldata data)
+        external
+        override
+        returns (bytes4)
+    {
+        if (msg.sender != address(nft)) revert InvalidToken();
+
+        Listing memory existing = listings[tokenId];
+        if (existing.price != 0) {
+            // list() 路径：挂单已存在，仅确认卖家一致
+            if (existing.seller != from) revert NotOwner();
+            return IERC721Receiver.onERC721Received.selector;
+        }
+
+        // 直接转入路径：data 必须为 abi.encode(price)
+        if (from == address(0)) revert ZeroAddress();
+        if (data.length != 32) revert InvalidData();
+        uint256 price = abi.decode(data, (uint256));
+        if (price == 0) revert ZeroPrice();
+
+        listings[tokenId] = Listing({seller: from, price: price});
+        emit Listed(tokenId, from, price);
+
         return IERC721Receiver.onERC721Received.selector;
     }
 
