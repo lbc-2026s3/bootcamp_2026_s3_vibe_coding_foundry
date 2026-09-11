@@ -82,6 +82,33 @@ contract ETHBankTest is Test {
         assertEq(bank.depositorCount(), 3);
     }
 
+    /// @notice 中间节点加仓会走 _remove 的 prev[n]=p 分支（被摘节点有后继）
+    function test_Deposit_TopUp_MiddleNode_Resorts() public {
+        vm.deal(alice, 3 ether);
+        vm.deal(bob, 2 ether);
+        vm.deal(carol, 1 ether);
+
+        vm.prank(alice);
+        bank.deposit{value: 3 ether}();
+        vm.prank(bob);
+        bank.deposit{value: 2 ether}();
+        vm.prank(carol);
+        bank.deposit{value: 1 ether}();
+        // 链表: alice -> bob -> carol；bob 加仓触发摘除中间节点
+        vm.deal(bob, 5 ether);
+        vm.prank(bob);
+        bank.deposit{value: 5 ether}();
+
+        assertEq(bank.balances(bob), 7 ether);
+        (address[3] memory top3, uint256[3] memory amounts) = bank.getTop3();
+        assertEq(top3[0], bob);
+        assertEq(top3[1], alice);
+        assertEq(top3[2], carol);
+        assertEq(amounts[0], 7 ether);
+        assertEq(amounts[1], 3 ether);
+        assertEq(amounts[2], 1 ether);
+    }
+
     function test_GetTop3_OrderedByBalance() public {
         vm.deal(alice, 4 ether);
         vm.deal(bob, 1 ether);

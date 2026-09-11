@@ -29,6 +29,7 @@ contract MultiSigWalletTest is Test {
         assertTrue(wallet.isOwner(bob));
         assertTrue(wallet.isOwner(carol));
         assertFalse(wallet.isOwner(stranger));
+        assertFalse(wallet.isOwner(recipient));
 
         address[] memory owners = wallet.getOwners();
         assertEq(owners.length, 3);
@@ -61,6 +62,13 @@ contract MultiSigWalletTest is Test {
         zero[0] = address(0);
         vm.expectRevert(MultiSigWallet.InvalidOwners.selector);
         new MultiSigWallet(zero, 1);
+
+        address[] memory zero2 = new address[](3);
+        zero2[0] = address(0);
+        zero2[1] = alice;
+        zero2[2] = bob;
+        vm.expectRevert(MultiSigWallet.InvalidOwners.selector);
+        new MultiSigWallet(zero2, 1);
     }
 
     function test_Propose_OwnerAutoConfirms() public {
@@ -88,6 +96,7 @@ contract MultiSigWalletTest is Test {
     function test_Confirm_IncrementsConfirmations() public {
         vm.prank(alice);
         uint256 id = wallet.propose(recipient, 1 ether, "");
+        assertTrue(wallet.isConfirmed(id, alice));
 
         vm.prank(bob);
         wallet.confirm(id);
@@ -152,8 +161,22 @@ contract MultiSigWalletTest is Test {
         wallet.execute(id);
     }
 
+    function test_RevertWhen_ConfirmAfterExecuted() public {
+        vm.prank(alice);
+        uint256 id = wallet.propose(recipient, 1 ether, "");
+        vm.prank(bob);
+        wallet.confirm(id);
+        wallet.execute(id);
+
+        // 未确认过的 owner 在执行后再 confirm，应走 AlreadyExecuted
+        vm.prank(carol);
+        vm.expectRevert(MultiSigWallet.AlreadyExecuted.selector);
+        wallet.confirm(id);
+    }
+
     function test_Execute_WithCalldata() public {
         Target target = new Target();
+        assertEq(target.value(), 0);
 
         vm.prank(alice);
         uint256 id = wallet.propose(address(target), 0, abi.encodeCall(Target.set, (42)));
@@ -170,6 +193,7 @@ contract MultiSigWalletTest is Test {
         (bool ok,) = address(wallet).call{value: 1 ether}("");
         assertTrue(ok);
         assertEq(address(wallet).balance, 11 ether);
+        assertEq(alice.balance, 0);
     }
 
     function test_FullFlow_2of3_EthTransfer() public {
@@ -186,6 +210,7 @@ contract MultiSigWalletTest is Test {
 
         wallet.execute(id);
         assertEq(recipient.balance, 2.5 ether);
+        assertEq(address(wallet).balance, 7.5 ether);
     }
 }
 
