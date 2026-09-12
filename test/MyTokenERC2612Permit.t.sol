@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {ERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
 import {MyTokenERC2612Permit} from "../src/MyTokenERC2612Permit.sol";
 
@@ -20,6 +22,12 @@ contract MyTokenERC2612PermitTest is Test {
     function setUp() public {
         vm.prank(deployer);
         token = new MyTokenERC2612Permit();
+    }
+
+    function test_SupportsInterface_IERC20Permit() public view {
+        assertTrue(token.supportsInterface(type(IERC165).interfaceId));
+        assertTrue(token.supportsInterface(type(IERC20Permit).interfaceId));
+        assertFalse(token.supportsInterface(0xffffffff));
     }
 
     function _signPermit(address owner, uint256 ownerPk, address spender, uint256 value, uint256 deadline)

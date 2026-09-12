@@ -2,7 +2,10 @@
 pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
+import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
+import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
+import {ITokenBankPermitDeposit} from "../src/ITokenBankPermitDeposit.sol";
 import {MyTokenERC2612Permit} from "../src/MyTokenERC2612Permit.sol";
 import {TokenBankERC2612} from "../src/TokenBankERC2612.sol";
 
@@ -26,6 +29,19 @@ contract TokenBankERC2612Test is Test {
         token = new MyTokenERC2612Permit();
         vm.prank(deployer);
         bank = new TokenBankERC2612(token);
+    }
+
+    function test_SupportsInterface_ERC165_And_PermitDeposit() public view {
+        assertTrue(bank.supportsInterface(type(IERC165).interfaceId));
+        assertTrue(bank.supportsInterface(type(ITokenBankPermitDeposit).interfaceId));
+        assertFalse(bank.supportsInterface(0xffffffff));
+        assertEq(type(ITokenBankPermitDeposit).interfaceId, ITokenBankPermitDeposit.permitDeposit.selector);
+    }
+
+    function test_Token_SupportsInterface_IERC20Permit() public view {
+        assertTrue(token.supportsInterface(type(IERC165).interfaceId));
+        assertTrue(token.supportsInterface(type(IERC20Permit).interfaceId));
+        assertFalse(token.supportsInterface(0xffffffff));
     }
 
     function _giveTokens(address to, uint256 amount) internal {
