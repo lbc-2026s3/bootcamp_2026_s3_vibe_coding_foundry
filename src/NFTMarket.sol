@@ -160,7 +160,8 @@ contract NFTMarket is IERC721Receiver, IERC1363Receiver, IERC1363Spender, ERC165
     }
 
     /// @dev approve + buyNFT / approveAndCall：从买家拉标价 TOKEN 给卖家并交割 NFT
-    function _buyWithPull(address buyer, uint256 tokenId, uint256 amount) private {
+    /// @dev internal 以便子合约（如 NFTMarketPermit）复用购买结算逻辑
+    function _buyWithPull(address buyer, uint256 tokenId, uint256 amount) internal {
         Listing memory listing = _consumeListing(tokenId, amount);
 
         paymentToken.safeTransferFrom(buyer, listing.seller, listing.price);
