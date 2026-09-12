@@ -120,6 +120,52 @@ contract TokenBankV1Test is Test {
         assertEq(bank.balances(bob), 200e18);
     }
 
+    function test_TransferAdmin_UpdatesAdmin() public {
+        vm.expectEmit(true, true, false, false);
+        emit TokenBankV1.AdminTransferred(admin, alice);
+
+        vm.prank(admin);
+        bank.transferAdmin(alice);
+
+        assertEq(bank.admin(), alice);
+    }
+
+    function test_TransferAdmin_RevertsIfNotAdmin() public {
+        vm.prank(alice);
+        vm.expectRevert("Only admin");
+        bank.transferAdmin(bob);
+    }
+
+    function test_TransferAdmin_RevertsOnZeroAddress() public {
+        vm.prank(admin);
+        vm.expectRevert("Zero address");
+        bank.transferAdmin(address(0));
+    }
+
+    function test_TransferAdmin_NewAdminCanWithdraw() public {
+        _giveTokens(alice, 100e18);
+        vm.prank(alice);
+        token.approve(address(bank), 100e18);
+        vm.prank(alice);
+        bank.deposit(100e18);
+
+        vm.prank(admin);
+        bank.transferAdmin(bob);
+
+        // 旧 admin 不能再提取
+        vm.prank(admin);
+        vm.expectRevert("Only admin");
+        bank.withdraw();
+
+        // 新 admin 可以提取
+        uint256 bobBalanceBefore = token.balanceOf(bob);
+        vm.prank(bob);
+        bank.withdraw();
+
+        assertEq(token.balanceOf(address(bank)), 0);
+        assertEq(token.balanceOf(bob), bobBalanceBefore + 100e18);
+    }
+
     /**
      * @dev 模糊测试：验证 deposit 存款后余额记录正确性
      * @param amount 模糊输入存款金额，uint96 类型
