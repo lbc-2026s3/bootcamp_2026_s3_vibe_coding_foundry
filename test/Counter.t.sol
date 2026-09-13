@@ -8,8 +8,12 @@ contract CounterTest is Test {
     Counter public counter;
 
     function setUp() public {
-        counter = new Counter();
-        counter.setNumber(0);
+        counter = new Counter(0);
+    }
+
+    function test_ConstructorSetsInitialNumber() public {
+        Counter c = new Counter(42);
+        assertEq(c.number(), 42);
     }
 
     function test_Increment() public {
