@@ -6,13 +6,13 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ISignatureTransfer} from "./interfaces/ISignatureTransfer.sol";
 import {TokenBankV2} from "./TokenBankV2.sol";
 
-/// @notice TokenBankPermit:继承 TokenBankV2,额外支持 Uniswap Permit2 签名授权存款
+/// @notice TokenBankPermit2:继承 TokenBankV2,额外支持 Uniswap Permit2 签名授权存款
 /// @dev 存款路径:
 /// 1. ERC20: approve(bank) + deposit()(父合约)
 /// 2. depositWithPermit2: 用户先一次性 approve(Permit2),再离线签 PermitTransferFrom,
 ///    调用本方法由 Permit2 把 token 拉入银行并记账(无需再 approve 本合约)
 /// @dev 签名中的 spender 必须是本合约地址(Permit2 校验 msg.sender == spender)
-contract TokenBankPermit is TokenBankV2 {
+contract TokenBankPermit2 is TokenBankV2 {
     /// @notice Uniswap Permit2 合约
     ISignatureTransfer public immutable permit2;
 

@@ -6,13 +6,13 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 import {ISignatureTransfer} from "../src/interfaces/ISignatureTransfer.sol";
 import {MyTokenV1} from "../src/MyTokenV1.sol";
-import {TokenBankPermit} from "../src/TokenBankPermit.sol";
+import {TokenBankPermit2} from "../src/TokenBankPermit2.sol";
 import {DeployPermit2} from "./utils/DeployPermit2.sol";
 
 /// @notice 本地单元测试:etch 官方 Permit2 字节码,走真实签名校验路径
-contract TokenBankPermitTest is Test, DeployPermit2 {
+contract TokenBankPermit2Test is Test, DeployPermit2 {
     MyTokenV1 public token;
-    TokenBankPermit public bank;
+    TokenBankPermit2 public bank;
     ISignatureTransfer public permit2;
 
     address public deployer = makeAddr("deployer");
@@ -35,7 +35,7 @@ contract TokenBankPermitTest is Test, DeployPermit2 {
         vm.prank(deployer);
         token = new MyTokenV1();
         vm.prank(deployer);
-        bank = new TokenBankPermit(token, permit2);
+        bank = new TokenBankPermit2(token, permit2);
     }
 
     function _giveTokens(address to, uint256 amount) internal {
@@ -51,7 +51,7 @@ contract TokenBankPermitTest is Test, DeployPermit2 {
 
     /// @notice 构造 Permit2 SignatureTransfer 的 EIP-712 签名,供 depositWithPermit2 使用
     /// @dev 哈希结构与 Permit2 一致:TokenPermissions -> PermitTransferFrom(含 spender) -> \x19\x01 + DOMAIN_SEPARATOR
-    /// @dev spender 必须填银行地址:链上 Permit2 用 msg.sender(即 TokenBankPermit) 作为 spender 校验签名
+    /// @dev spender 必须填银行地址:链上 Permit2 用 msg.sender(即 TokenBankPermit2) 作为 spender 校验签名
     /// @param ownerPk 代币所有者私钥(Foundry vm.sign)
     /// @param spender 签名授权的 spender,测试中应为 address(bank)
     /// @param tokenAddr / amount / nonce / deadline 对应 PermitTransferFrom 字段
@@ -344,9 +344,9 @@ contract TokenBankPermitTest is Test, DeployPermit2 {
 }
 
 /// @notice fork 以太坊主网,使用链上真实 Permit2 + USDC
-/// @dev 运行:forge test --match-contract TokenBankPermitMainnetForkTest
+/// @dev 运行:forge test --match-contract TokenBankPermit2MainnetForkTest
 ///      RPC 使用 .env 的 FOUNDRY_RPC_ENDPOINTS.mainnet
-contract TokenBankPermitMainnetForkTest is Test {
+contract TokenBankPermit2MainnetForkTest is Test {
     /// @dev https://etherscan.io/address/0x000000000022D473030F116dDEE9F6B43aC78BA3
     address internal constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
     /// @dev https://etherscan.io/address/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
@@ -360,7 +360,7 @@ contract TokenBankPermitMainnetForkTest is Test {
 
     ISignatureTransfer internal permit2;
     IERC20 internal usdc;
-    TokenBankPermit internal bank;
+    TokenBankPermit2 internal bank;
 
     uint256 internal alicePk = 0xA11CE;
     address internal alice = vm.addr(alicePk);
@@ -377,7 +377,7 @@ contract TokenBankPermitMainnetForkTest is Test {
         require(PERMIT2.code.length > 0, "Permit2 not deployed on this fork");
         require(USDC.code.length > 0, "USDC not deployed on this fork");
 
-        bank = new TokenBankPermit(usdc, permit2);
+        bank = new TokenBankPermit2(usdc, permit2);
         vm.deal(alice, 1 ether);
     }
 

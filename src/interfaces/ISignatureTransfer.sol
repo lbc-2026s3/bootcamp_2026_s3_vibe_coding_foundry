@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-/// @notice Minimal Uniswap Permit2 SignatureTransfer interface used by TokenBankPermit
+/// @notice Minimal Uniswap Permit2 SignatureTransfer interface used by TokenBankPermit2
 /// @dev Canonical Permit2: 0x000000000022D473030F116dDEE9F6B43aC78BA3 (CREATE2, all major chains)
 interface ISignatureTransfer {
     /// @notice The token and amount details for a transfer signed in the permit transfer signature
