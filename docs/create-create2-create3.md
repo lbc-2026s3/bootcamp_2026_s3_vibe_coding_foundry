@@ -1,14 +1,13 @@
 # CREATE / CREATE2 / CREATE3
 
-EVM 只有两个部署操作码：`CREATE`（`0xF0`）和 `CREATE2`（`0xF5`）。**CREATE3 不是操作码**，是「先 CREATE2 一个固定 bytecode 的 proxy，再让 proxy 用 CREATE 部署真正合约」的模式，用来把 initcode 从地址公式里拿掉。
+EVM 只有两个部署操作码：`CREATE`（`0xF0`）和 `CREATE2`（`0xF5`）。**CREATE3 不是操作码**，是两步组合：factory 用 CREATE2 部署一段**固定 bytecode** 的 proxy，proxy 再用 CREATE 部署真正的合约。
 
-本仓库对应代码：
+第二步仍然是 CREATE，最终地址就是 `keccak256(RLP([proxy, nonce]))[12:]`，依赖的确实是 proxy 地址和 proxy nonce。它可预测，是因为这两项都能事先钉死，而不是因为 CREATE 突然不看 nonce 了：
 
-| 方式 | 本仓库入口 |
-| --- | --- |
-| CREATE | Foundry `new Counter(0)`：[`bootcamp_2026_s3_vibe_coding_foundry/script/Counter.s.sol`](../bootcamp_2026_s3_vibe_coding_foundry/script/Counter.s.sol)；地址预测：[`bootcamp_2026_s3_vibe_coding_backend/src/wallet/predictCreateAddress.ts`](../bootcamp_2026_s3_vibe_coding_backend/src/wallet/predictCreateAddress.ts) |
-| CREATE2 | 跨链同址的 Permit2：`0x000000000022D473030F116dDEE9F6B43aC78BA3`（见 [`TokenBankPermit2.s.sol`](../bootcamp_2026_s3_vibe_coding_foundry/script/TokenBankPermit2.s.sol)） |
-| CREATE3 | Solmate 封装 + Counter 部署：[`Create3Factory.sol`](../bootcamp_2026_s3_vibe_coding_foundry/src/Create3Factory.sol)、[`CounterCreate3.s.sol`](../bootcamp_2026_s3_vibe_coding_foundry/script/CounterCreate3.s.sol) |
+- **proxy 地址**：`CREATE2(factory, salt, 固定 PROXY_BYTECODE)`。hash 进去的是这段写死的 proxy 代码，不是 Counter 的 initcode。
+- **proxy nonce**：每次 `deploy` 都会按 salt **新建一个** proxy，不是复用同一个。新合约 nonce 从 1 起；这个刚出生的 proxy 只做一次 CREATE，所以用的永远是 nonce `1`。换 salt 就是另一个新 proxy，nonce 照样是 1；同一 salt 再 deploy，CREATE2 会撞上已有的那个 proxy，直接失败。
+
+目标合约的 initcode 只作为 calldata 传给已经算好地址的 CREATE，不进入任何一步的地址公式。所以对外只剩下 `f(factory, salt)`。
 
 官方参考：[evm.codes CREATE](https://www.evm.codes/?fork=osaka#f0)、[evm.codes CREATE2](https://www.evm.codes/?fork=osaka#f5)、[EIP-1014](https://eips.ethereum.org/EIPS/eip-1014)、[Solmate CREATE3](https://github.com/transmissions11/solmate/blob/main/src/utils/CREATE3.sol)。
 
@@ -21,8 +20,8 @@ EVM 只有两个部署操作码：`CREATE`（`0xF0`）和 `CREATE2`（`0xF5`）�
 | 地址取决于 | deployer + nonce | deployer + salt + **initcode hash** | factory + salt（**不含**目标合约 bytecode） |
 | 能提前算地址？ | 要先知道即将使用的 nonce | 要先知道完整 initcode（含构造参数） | 只要知道 factory 地址和 salt |
 | 构造参数一变 | 地址不变（仍是下一个 nonce） | **地址变** | 地址不变（但同一 salt 只能用一次） |
-| 跨链同址 | 几乎做不到（各链 nonce 对不齐） | 可以（同一 deployer、salt、initcode） | 可以，但 **factory 必须先在各链同址** |
-| 谁来发 opcode | EOA 或合约都可以 | EOA 或合约都可以 | 必须由**合约**调库；EOA 要先有 factory |
+| 跨链同址 | 几乎做不到（各链 nonce 对不齐） | 可以（同一 deployer、salt、initcode） | 可以，但 **factory 得先用 CREATE2 钉在各链同一地址** |
+| 谁来发 opcode | EOA 原生（`to` 为空的部署交易）或合约 | **只能在合约代码里执行**；EOA 要 call 一个 deployer，公式里的 sender 是那个合约 | 必须由合约调库；EOA 要先有 factory |
 | 典型用途 | 日常 `new Contract()` | 工厂、最小代理、跨链同址协议 | 跨链同址但 bytecode / 构造参数可能不同 |
 
 ```mermaid
@@ -39,7 +38,11 @@ flowchart LR
   end
 ```
 
-选法：普通部署用 CREATE；要在部署前锁定地址且 bytecode 已定，用 CREATE2；要跨链同址、且各链 bytecode 或构造参数可能不同，用 CREATE3（先把 factory 放到同一地址）。
+| 场景 | 用 |
+| --- | --- |
+| 普通部署 | CREATE |
+| 部署前要锁定地址，且 bytecode 已定 | CREATE2 |
+| 跨链同址，且各链 bytecode / 构造参数可能不同 | CREATE3（factory 本身先用 CREATE2 钉到同一地址） |
 
 ---
 
@@ -88,6 +91,7 @@ address = keccak256(0xff ++ sender ++ salt ++ keccak256(init_code))[12:]
 - `salt` 是 32 字节，调用方自选。
 - `init_code` = `creationCode || abi.encode(constructorArgs)`。构造参数、编译器版本、optimizer 任一变化，hash 就变，地址就变。
 - 同一 `(sender, salt, init_code)` 只能成功一次；地址上已有代码时 CREATE2 失败、返回 `address(0)`。
+- **EOA 不能原生发 CREATE2。** `to` 为空的部署交易永远是 CREATE。CREATE2 只是 opcode，必须在某段代码里执行。EOA 只能 call 一个 deployer 合约，公式里的 `sender` 是那个合约，不是 EOA。
 
 Foundry / Solidity：
 
@@ -107,8 +111,8 @@ Solmate 实现：[`CREATE3.sol`](https://github.com/transmissions11/solmate/blob
 
 两步：
 
-1. **CREATE2** 部署一段**写死的** proxy bytecode（Solmate 的 `PROXY_BYTECODE`）。proxy 地址只取决于 factory + salt + 这段固定 hash，与 Counter 无关。
-2. 向 proxy `call(creationCode)`。proxy 用 **CREATE**（自己的 nonce = 1）把 calldata 当成 initcode 部署出去。
+1. **CREATE2** 按 salt **新建**一段写死的 proxy（Solmate 的 `PROXY_BYTECODE`）。proxy 地址只取决于 factory + salt + 这段固定 hash，与 Counter 无关。同一 salt 第二次会撞车。
+2. 向这个刚部署的 proxy `call(creationCode)`。它是新合约，nonce 从 1 起，第一次（也是唯一一次）CREATE 把 calldata 当成 initcode 部署出去。
 
 最终地址：
 
@@ -118,12 +122,12 @@ deployed  = keccak256(RLP([proxy, nonce=1]))[12:]
           = keccak256(0xd6 ++ 0x94 ++ proxy ++ 0x01)[12:]
 ```
 
-`0xd694...01` 是「20 字节地址 + nonce 1」的 RLP。目标合约的 creationCode 不出现在公式里。
+`0xd694...01` 是「20 字节地址 + nonce 1」的 RLP。这里并没有绕开 CREATE：地址仍然是 proxy + nonce。只是 proxy 由固定 bytecode 的 CREATE2 事先算死，nonce 又恒为 1，所以目标合约的 creationCode 进不了公式。
 
 约束：
 
 - 同一 factory 上同一 salt 只能部署一次（第 1 步 CREATE2 会撞车，Solmate 抛 `DEPLOYMENT_FAILED`）。
-- 跨链同址的前提是 **factory 本身先同址**。脚本每次 `new Create3Factory()`（CREATE），factory 地址随部署者 nonce 变，Counter 的 CREATE3 地址也就变了。要跨链复用，应先用 CREATE2 把 factory 钉死，再对 factory 调 `deploy(salt, creationCode)`。
+- 跨链同址的前提是 **factory 本身先同址**。`new Create3Factory()` 是 CREATE，factory 地址随部署者 nonce 走，各链一对不齐，后面的 CREATE3 地址全变。要跨链复用，应先用 CREATE2（通常经各链已在同址的 `0x4e59…` Deterministic Deployment Proxy）把 factory 钉死，再对它调 `deploy(salt, creationCode)`。
 - 部署失败时（构造函数 revert、runtime code 为空）Solmate 抛 `INITIALIZATION_FAILED`。
 
 本仓库部署 Counter：
