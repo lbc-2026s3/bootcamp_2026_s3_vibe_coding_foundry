@@ -9,6 +9,7 @@ forge script script/upgradeable/MyERC721UpgradeableNFT.s.sol --broadcast \
 
 输出：
 MyERC721UpgradeableNFT => 0x1f728925034293943C9Fde0cC3E3E1D5a79E57b3
+
 MyERC721UpgradeableNFT_Implementation => 0xC214FDA87a4f0053E62AC2C8c6c127C864b61EBB
 
 
@@ -38,6 +39,7 @@ forge script script/upgradeable/MyERC721UpgradeableNFTV2.s.sol --broadcast \
 
 输出：
 MyERC721UpgradeableNFT => 0x1f728925034293943C9Fde0cC3E3E1D5a79E57b3
+
 MyERC721UpgradeableNFT_Implementation => 0xe96b1bb803Ee488B2f5D0FFEEc9a3C15a8Fa654e
 
 # 验证 MyERC721UpgradeableNFTV2
