@@ -13,6 +13,8 @@ import {NFTMarket} from "./NFTMarket.sol";
 /// @notice NFTMarketPermit: 继承 NFTMarket，额外支持离线白名单签名购买
 /// @dev 保留父合约全部购买路径（buyNFT / ERC1363）；另增 permitBuy：需 owner 离线 EIP-712 授权
 /// @dev 签名字段: buyer、tokenId、nonce、deadline；nonce 使用 OZ Nonces 防重放
+/// @dev Ownable 在此不是给函数加 onlyOwner，而是保存「谁有权签发 PermitBuy」。
+///      permitBuy 用 ECDSA 恢复出的地址必须等于 owner()；换签发人走 transferOwnership。
 contract NFTMarketPermit is NFTMarket, EIP712, Ownable, Nonces {
     /// @dev EIP-712 typehash: PermitBuy(address buyer,uint256 tokenId,uint256 nonce,uint256 deadline)
     bytes32 public constant PERMIT_BUY_TYPEHASH =
@@ -25,11 +27,11 @@ contract NFTMarketPermit is NFTMarket, EIP712, Ownable, Nonces {
 
     /// @param paymentToken_ 支付代币
     /// @param nft_ 交易的 NFT
-    /// @param initialOwner 白名单签名者（owner），离线签 PermitBuy
+    /// @param initialOwner 白名单签名者（owner），离线签 PermitBuy；无 onlyOwner 管理函数
     constructor(IERC20 paymentToken_, IERC721 nft_, address initialOwner)
         NFTMarket(paymentToken_, nft_)
         EIP712("NFTMarketPermit", "1")
-        Ownable(initialOwner)
+        Ownable(initialOwner) // 仅把签发人写入 owner，见 permitBuy 的 recovered != owner()
     {}
 
     /// @notice EIP-712 domain separator（便于链下拼装 typed data）
@@ -55,6 +57,7 @@ contract NFTMarketPermit is NFTMarket, EIP712, Ownable, Nonces {
         bytes32 structHash = keccak256(abi.encode(PERMIT_BUY_TYPEHASH, msg.sender, tokenId, nonce, deadline));
         bytes32 digest = _hashTypedDataV4(structHash);
         address recovered = ECDSA.recover(digest, v, r, s);
+        // Ownable 的实际用途：签名必须来自当前 owner（白名单签发人），不是 onlyOwner 权限检查
         if (recovered != owner()) revert InvalidSigner(recovered, owner());
 
         emit PermitBuyAuthorized(msg.sender, tokenId, nonce, deadline);

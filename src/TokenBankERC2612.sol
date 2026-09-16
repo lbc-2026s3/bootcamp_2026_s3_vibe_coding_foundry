@@ -7,7 +7,7 @@ import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/Safe
 import {ERC165} from "openzeppelin-contracts/contracts/utils/introspection/ERC165.sol";
 import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
-import {ITokenBankPermitDeposit} from "./ITokenBankPermitDeposit.sol";
+import {ITokenBankPermitDeposit} from "./interfaces/ITokenBankPermitDeposit.sol";
 import {TokenBankV2} from "./TokenBankV2.sol";
 
 /// @notice TokenBankERC2612:继承 TokenBankV2,额外支持 ERC-2612 permit 单笔存款

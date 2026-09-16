@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20Permit} from "openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {IERC165} from "openzeppelin-contracts/contracts/utils/introspection/IERC165.sol";
 
-import {ITokenBankPermitDeposit} from "../src/ITokenBankPermitDeposit.sol";
+import {ITokenBankPermitDeposit} from "../src/interfaces/ITokenBankPermitDeposit.sol";
 import {MyTokenERC2612Permit} from "../src/MyTokenERC2612Permit.sol";
 import {TokenBankERC2612} from "../src/TokenBankERC2612.sol";
 
