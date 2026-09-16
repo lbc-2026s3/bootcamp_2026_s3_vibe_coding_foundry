@@ -30,6 +30,7 @@ contract AirdopMerkleNFTMarket is NFTMarketPermit, Multicall {
     error NotWhitelisted(address account);
     error AlreadyClaimed(address account);
     error PermitFailed();
+    error NotAirdropListing(address seller);
 
     event PermitPrePaid(address indexed owner, uint256 value, uint256 deadline);
     event NFTClaimed(address indexed account, uint256 indexed tokenId, uint256 paid);
@@ -63,7 +64,8 @@ contract AirdopMerkleNFTMarket is NFTMarketPermit, Multicall {
         emit PermitPrePaid(msg.sender, value, deadline);
     }
 
-    /// @notice 仅白名单用户可调用：校验 Merkle proof 后按挂单价的 50% 购买已上架 NFT
+    /// @notice 仅白名单用户可调用：校验 Merkle proof 后，半价购买「市场 owner 上架」的 NFT
+    /// @dev 素人挂单不走五折，请用 buyNFT / permitBuy 原价购买
     /// @param tokenId 要领取的 NFT
     /// @param merkleProof 对应 msg.sender 的 Merkle proof
     function claimNFT(uint256 tokenId, bytes32[] calldata merkleProof) external nonReentrant {
@@ -74,6 +76,7 @@ contract AirdopMerkleNFTMarket is NFTMarketPermit, Multicall {
 
         Listing memory listing = listings[tokenId];
         if (listing.price == 0) revert NotListed();
+        if (listing.seller != owner()) revert NotAirdropListing(listing.seller);
 
         // 白名单用户可以以50%的价格购买NFT
         uint256 paid = (listing.price * WHITELIST_PRICE_BPS) / 10_000;

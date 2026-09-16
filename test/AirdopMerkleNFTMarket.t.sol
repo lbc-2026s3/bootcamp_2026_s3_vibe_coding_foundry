@@ -59,15 +59,20 @@ contract AirdopMerkleNFTMarketTest is Test {
         }
         token.transfer(stranger, 1_000e18);
 
-        uint256 tokenId = nft.mint(seller, URI);
+        uint256 tokenId = nft.mint(marketOwner, URI);
         assertEq(tokenId, 0);
     }
 
-    function _list(uint256 tokenId, uint256 price) internal {
-        vm.startPrank(seller);
+    function _listAs(address lister, uint256 tokenId, uint256 price) internal {
+        vm.startPrank(lister);
         nft.approve(address(market), tokenId);
         market.list(tokenId, price);
         vm.stopPrank();
+    }
+
+    /// @dev 项目方（market owner）上架，才享受白名单五折
+    function _listAirdrop(uint256 tokenId, uint256 price) internal {
+        _listAs(marketOwner, tokenId, price);
     }
 
     function _proof(uint256 index) internal view returns (bytes32[] memory) {
@@ -124,7 +129,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_WhitelistedBuyerPaysHalfPrice() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         uint256 deadline = block.timestamp + 1 days;
         (uint8 v, bytes32 r, bytes32 s) = _signTokenPermit(wlPk[3], whitelist[3], DISCOUNTED, deadline);
         bytes32[] memory proof = _proof(3);
@@ -133,14 +138,14 @@ contract AirdopMerkleNFTMarketTest is Test {
         market.permitPrePay(DISCOUNTED, deadline, v, r, s);
 
         vm.expectEmit(true, true, true, true, address(market));
-        emit Bought(0, whitelist[3], seller, DISCOUNTED);
+        emit Bought(0, whitelist[3], marketOwner, DISCOUNTED);
         vm.expectEmit(true, true, false, true, address(market));
         emit NFTClaimed(whitelist[3], 0, DISCOUNTED);
         market.claimNFT(0, proof);
         vm.stopPrank();
 
         assertEq(nft.ownerOf(0), whitelist[3]);
-        assertEq(token.balanceOf(seller), DISCOUNTED);
+        assertEq(token.balanceOf(marketOwner), DISCOUNTED);
         assertEq(token.balanceOf(whitelist[3]), 1_000e18 - DISCOUNTED);
         assertTrue(market.hasClaimed(whitelist[3]));
         (address listedSeller, uint256 listedPrice) = market.listings(0);
@@ -149,7 +154,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_Multicall_PermitPrePayAndClaimNFT() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         uint256 deadline = block.timestamp + 1 days;
         (uint8 v, bytes32 r, bytes32 s) = _signTokenPermit(wlPk[1], whitelist[1], DISCOUNTED, deadline);
         bytes32[] memory proof = _proof(1);
@@ -163,7 +168,7 @@ contract AirdopMerkleNFTMarketTest is Test {
         market.multicall(calls);
 
         assertEq(nft.ownerOf(0), whitelist[1]);
-        assertEq(token.balanceOf(seller), DISCOUNTED);
+        assertEq(token.balanceOf(marketOwner), DISCOUNTED);
         assertEq(token.balanceOf(whitelist[1]), 1_000e18 - DISCOUNTED);
         assertTrue(market.hasClaimed(whitelist[1]));
         // 授权已经用完了
@@ -173,8 +178,8 @@ contract AirdopMerkleNFTMarketTest is Test {
     function test_ClaimNFT_AllWhitelistAddresses() public {
         uint256 n = whitelist.length;
         for (uint256 i = 0; i < n; ++i) {
-            uint256 tokenId = i == 0 ? 0 : nft.mint(seller, URI);
-            _list(tokenId, PRICE);
+            uint256 tokenId = i == 0 ? 0 : nft.mint(marketOwner, URI);
+            _listAirdrop(tokenId, PRICE);
 
             uint256 deadline = block.timestamp + 1 days;
             (uint8 v, bytes32 r, bytes32 s) = _signTokenPermit(wlPk[i], whitelist[i], DISCOUNTED, deadline);
@@ -191,14 +196,14 @@ contract AirdopMerkleNFTMarketTest is Test {
             assertTrue(market.hasClaimed(whitelist[i]));
             assertEq(token.allowance(whitelist[i], address(market)), 0);
             assertEq(token.balanceOf(whitelist[i]), 1_000e18 - DISCOUNTED);
-            assertEq(token.balanceOf(seller), DISCOUNTED * (i + 1));
+            assertEq(token.balanceOf(marketOwner), DISCOUNTED * (i + 1));
         }
 
-        assertEq(token.balanceOf(seller), DISCOUNTED * n);
+        assertEq(token.balanceOf(marketOwner), DISCOUNTED * n);
     }
 
     function test_ClaimNFT_StrangerReverts() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         bytes32[] memory proof = _proof(0);
 
         vm.startPrank(stranger);
@@ -209,7 +214,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_WrongProofReverts() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         // index 0 的 proof 不能给 index 2 用
         bytes32[] memory proof = _proof(0);
 
@@ -221,7 +226,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_EmptyProofReverts() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         bytes32[] memory proof = new bytes32[](0);
 
         vm.startPrank(whitelist[0]);
@@ -232,7 +237,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_AlreadyClaimedReverts() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         bytes32[] memory proof = _proof(0);
 
         vm.startPrank(whitelist[0]);
@@ -240,8 +245,8 @@ contract AirdopMerkleNFTMarketTest is Test {
         market.claimNFT(0, proof);
         vm.stopPrank();
 
-        uint256 tokenId1 = nft.mint(seller, URI);
-        _list(tokenId1, PRICE);
+        uint256 tokenId1 = nft.mint(marketOwner, URI);
+        _listAirdrop(tokenId1, PRICE);
 
         vm.startPrank(whitelist[0]);
         vm.expectRevert(abi.encodeWithSelector(AirdopMerkleNFTMarket.AlreadyClaimed.selector, whitelist[0]));
@@ -260,7 +265,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_PriceOne_RevertsZeroDiscount() public {
-        _list(0, 1);
+        _listAirdrop(0, 1);
         bytes32[] memory proof = _proof(0);
 
         vm.startPrank(whitelist[0]);
@@ -271,7 +276,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_WithoutAllowanceReverts() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         bytes32[] memory proof = _proof(0);
 
         vm.prank(whitelist[0]);
@@ -286,7 +291,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_PermitPrePay_FrontrunStillAllowsClaim() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         uint256 deadline = block.timestamp + 1 days;
         (uint8 v, bytes32 r, bytes32 s) = _signTokenPermit(wlPk[4], whitelist[4], DISCOUNTED, deadline);
         bytes32[] memory proof = _proof(4);
@@ -316,7 +321,7 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_ClaimNFT_SecondWhitelistLosesSameListingThenClaimsAnother() public {
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
         bytes32[] memory proof0 = _proof(0);
         bytes32[] memory proof1 = _proof(1);
 
@@ -333,8 +338,8 @@ contract AirdopMerkleNFTMarketTest is Test {
 
         assertFalse(market.hasClaimed(whitelist[1]));
 
-        uint256 tokenId1 = nft.mint(seller, URI);
-        _list(tokenId1, PRICE);
+        uint256 tokenId1 = nft.mint(marketOwner, URI);
+        _listAirdrop(tokenId1, PRICE);
 
         vm.prank(whitelist[1]);
         market.claimNFT(tokenId1, proof1);
@@ -345,16 +350,34 @@ contract AirdopMerkleNFTMarketTest is Test {
     }
 
     function test_BuyNFT_StillWorksAtFullPrice() public {
-        _list(0, PRICE);
+        uint256 tokenId = nft.mint(seller, URI);
+        _listAs(seller, tokenId, PRICE);
 
         vm.startPrank(stranger);
         token.approve(address(market), PRICE);
-        market.buyNFT(0, PRICE);
+        market.buyNFT(tokenId, PRICE);
         vm.stopPrank();
 
-        assertEq(nft.ownerOf(0), stranger);
+        assertEq(nft.ownerOf(tokenId), stranger);
         assertEq(token.balanceOf(seller), PRICE);
         assertFalse(market.hasClaimed(stranger));
+    }
+
+    function test_ClaimNFT_CivilianListing_Reverts() public {
+        uint256 tokenId = nft.mint(seller, URI);
+        _listAs(seller, tokenId, PRICE);
+        bytes32[] memory proof = _proof(0);
+
+        vm.startPrank(whitelist[0]);
+        token.approve(address(market), DISCOUNTED);
+        vm.expectRevert(abi.encodeWithSelector(AirdopMerkleNFTMarket.NotAirdropListing.selector, seller));
+        market.claimNFT(tokenId, proof);
+        vm.stopPrank();
+
+        assertFalse(market.hasClaimed(whitelist[0]));
+        (address listedSeller, uint256 listedPrice) = market.listings(tokenId);
+        assertEq(listedSeller, seller);
+        assertEq(listedPrice, PRICE);
     }
 
     function test_ClaimNFT_OddPriceRoundsDown() public {
@@ -362,7 +385,7 @@ contract AirdopMerkleNFTMarketTest is Test {
         uint256 paid = (oddPrice * 5_000) / 10_000;
         assertEq(paid, 50);
 
-        _list(0, oddPrice);
+        _listAirdrop(0, oddPrice);
         bytes32[] memory proof = _proof(5);
 
         vm.startPrank(whitelist[5]);
@@ -370,13 +393,13 @@ contract AirdopMerkleNFTMarketTest is Test {
         market.claimNFT(0, proof);
         vm.stopPrank();
 
-        assertEq(token.balanceOf(seller), paid);
+        assertEq(token.balanceOf(marketOwner), paid);
         assertEq(nft.ownerOf(0), whitelist[5]);
     }
 
     function testFuzz_ClaimNFT_WhitelistIndex(uint256 index) public {
         index = bound(index, 0, whitelist.length - 1);
-        _list(0, PRICE);
+        _listAirdrop(0, PRICE);
 
         uint256 deadline = block.timestamp + 1 days;
         (uint8 v, bytes32 r, bytes32 s) = _signTokenPermit(wlPk[index], whitelist[index], DISCOUNTED, deadline);
@@ -390,7 +413,7 @@ contract AirdopMerkleNFTMarketTest is Test {
         market.multicall(calls);
 
         assertEq(nft.ownerOf(0), whitelist[index]);
-        assertEq(token.balanceOf(seller), DISCOUNTED);
+        assertEq(token.balanceOf(marketOwner), DISCOUNTED);
         assertTrue(market.hasClaimed(whitelist[index]));
     }
 
@@ -406,8 +429,8 @@ contract AirdopMerkleNFTMarketTest is Test {
         AirdopMerkleNFTMarket market12 =
             new AirdopMerkleNFTMarket(token, nft, marketOwner, MerkleWhitelist.root(accounts));
 
-        uint256 tokenId = nft.mint(seller, URI);
-        vm.startPrank(seller);
+        uint256 tokenId = nft.mint(marketOwner, URI);
+        vm.startPrank(marketOwner);
         nft.approve(address(market12), tokenId);
         market12.list(tokenId, PRICE);
         vm.stopPrank();
