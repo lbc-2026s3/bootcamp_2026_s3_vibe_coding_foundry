@@ -136,6 +136,7 @@ contract NFTMarketPermitV1Test is Test {
         market.upgradeToAndCall(address(v2), abi.encodeCall(NFTMarketPermitV2.initializeV2, ()));
 
         NFTMarketPermitV2 upgraded = NFTMarketPermitV2(address(market));
+        assertEq(upgraded.version(), 2);
         assertEq(upgraded.owner(), marketOwner);
         assertEq(address(upgraded.paymentToken()), address(token));
         (address listedSeller, uint256 listedPrice) = upgraded.listings(0);
