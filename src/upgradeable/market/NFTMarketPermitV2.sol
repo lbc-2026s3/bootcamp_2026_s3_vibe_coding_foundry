@@ -25,8 +25,7 @@ contract NFTMarketPermitV2 is NFTMarketPermitV1 {
         address indexed seller, uint256 indexed tokenId, uint256 price, uint256 nonce, uint256 deadline
     );
 
-    /// @notice 升级初始化：写入 version=2（V1 状态保持不变）
-    /// @custom:oz-upgrades-validate-as-initializer
+    /// @notice 升级初始化：写入 version=2（V1 已在 proxy 上 initialize 过，无需再调父 initializer）
     function initializeV2() public reinitializer(2) onlyOwner {
         version = 2;
     }
