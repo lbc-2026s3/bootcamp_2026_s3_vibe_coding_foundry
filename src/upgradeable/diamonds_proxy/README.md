@@ -57,6 +57,34 @@ OpenZeppelin 没有官方 Diamond；本示例按 [EIP-2535](https://eips.ethereu
 
 一句话：**用户始终打同一个合约地址；owner 用 `diamondCut` 决定这个地址此刻能调哪些函数、每个函数跑哪段逻辑。**
 
+## 两个 facet 出现相同函数签名（或相同 selector）怎么办？
+
+钻石的路由表是 **`selector → facet`，一对一**。`fallback` 只查一次表，再 `delegatecall` 到唯一 facet——**不会**让两个实现同时响应同一个函数。
+
+函数签名相同 ⇒ selector 一定相同（例如 `deposit()`）。本 demo 里 `VaultFacet` 与 `PointsFacet` 都有 `deposit()`，就是这种情况。
+
+| `diamondCut` 操作 | 行为（见 [`LibDiamond.sol`](./libraries/LibDiamond.sol)） |
+|-------------------|----------------------------------------------------------|
+| **Add** | selector 已存在 → revert（`CannotAddFunctionToDiamondThatAlreadyExists`） |
+| **Replace** | selector 必须已存在，且新 facet ≠ 旧 facet → 改指向新 facet |
+| **Remove** | 删除该 selector 的映射 |
+
+本 demo 的正确用法：先 Add `VaultFacet.deposit`；要改成「存款发积分」时，对同一 selector **Replace** 到 `PointsFacet`。旧 facet 代码仍在链上，但路由表不再指向它。
+
+极少见的情况：不同函数名也可能哈希出相同 4 字节 selector。钻石只认 selector，不认函数名——同样只能挂一个。
+
+### 生产级一般怎么处理？
+
+规则与 demo 相同：**同 selector 不能并存**。生产更强调提前消冲突、显式升级：
+
+1. **按领域拆 facet**，避免两个模块同时对外暴露同一签名；需要改行为的函数做成「可 Replace 的版本」。
+2. **只 cut 白名单 selector**，不要把 facet 继承带来的多余 `public`/`external` 一并挂上。
+3. **Cut 前做 selector 清单 / diff**（对照 Loupe），冲突则失败，绝不静默覆盖。
+4. 换实现 = 治理下的正式 **Replace**（multisig + timelock）+ 可选 `_init` + Loupe 断言新路由。
+5. 长期可考虑限制或弃权 `diamondCut`（冻钻石），并审计存储布局与 cut 权限。
+
+一句话：**冲突不会智能合并；要么设计阶段消掉，要么用 Replace 明确指定谁生效。**
+
 ## 架构
 
 ```mermaid
