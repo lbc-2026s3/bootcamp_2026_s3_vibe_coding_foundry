@@ -119,7 +119,7 @@ contract MiniSwapPool is ERC20 {
     function getAmountOut(
         uint256 amountIn,
         address fromToken
-    ) public view returns (uint256 amountOut, uint256 _reserve0, uint256 _reserve1) {
+    ) public view virtual returns (uint256 amountOut, uint256 _reserve0, uint256 _reserve1) {
         uint256 newReserve0;
         uint256 newReserve1;
         uint256 k = reserve0 * reserve1;
