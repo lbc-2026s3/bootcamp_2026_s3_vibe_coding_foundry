@@ -1,4 +1,5 @@
-pragma solidity >=0.5.0;
+// SPDX-License-Identifier: GPL-3.0-or-later
+pragma solidity ^0.8.24;
 
 interface IUniswapV1Exchange {
     function balanceOf(address owner) external view returns (uint);

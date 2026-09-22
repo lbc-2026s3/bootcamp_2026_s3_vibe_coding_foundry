@@ -2,8 +2,10 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-via_ir = true
-
+solc_version = "0.8.34"
+# solc 0.8.34 + via_ir 会在编译 script/ 时触发 Yul stack-too-deep（length_1 / memoryguard）
+# 关闭 via_ir 后全量编译可通过；若个别合约再报 stack too deep 再针对性拆函数
+via_ir = false
 # openzeppelin-foundry-upgrades: 升级安全校验（Upgrades.sol）需要 ffi + AST + storage layout
 ffi = true
 ast = true
