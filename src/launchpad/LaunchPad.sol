@@ -9,10 +9,10 @@ import {IUniswapV2Factory} from "uniswapv2/interfaces/IUniswapV2Factory.sol";
 import {IUniswapV2Pair} from "uniswapv2/interfaces/IUniswapV2Pair.sol";
 import {MemeToken} from "./MemeToken.sol";
 
-/// @notice Meme LaunchPad：固定价 mint 期募资进 Uniswap V2 并烧 LP；达标后毕业，仅允许池内买入。
-/// @dev mint 期：1% 手续费记入 pendingFees；99% + 按 mint 价折算 meme 加池；找零退回调用者。
+/// @notice 线上 LaunchPad 模式：mint 期锁 ETH；达标/售罄后一次性加 Uniswap V2 流动性并烧 LP；之后只能 buyMeme。
+/// @dev mint：1% → pendingFees；99% 锁仓（ethRaisedForLp）并记账 memeReservedForLp；毕业时按 mint 价一次性 addLiquidityETH。
 contract LaunchPad is ReentrancyGuard {
-    uint256 public constant CREATOR_FEE_BPS = 100; // 1%
+    uint256 public constant CREATOR_FEE_BPS = 100;
     uint256 public constant BPS_DENOMINATOR = 10_000;
     address public constant DEAD = address(0xdead);
 
@@ -27,8 +27,10 @@ contract LaunchPad is ReentrancyGuard {
     error EthTransferFailed();
     error Expired();
     error AlreadyGraduated();
+    error NotGraduated();
     error InsufficientMintRoom();
     error NoFees();
+    error GraduationNotReady();
 
     address public immutable implementation;
     IUniswapV2Router02 public immutable router;
@@ -36,12 +38,12 @@ contract LaunchPad is ReentrancyGuard {
     address public immutable uniFactory;
 
     mapping(address token => bool) public isMeme;
-    /// @notice 累计注入流动性的 ETH 目标，达到后毕业（关闭 mintMeme）
     mapping(address token => uint256) public graduationEth;
-    /// @notice 已累计用于加池的 ETH（按 mint 意图计入，非 Router 实际 used）
+    /// @notice 已锁定、待毕业加池的 ETH
     mapping(address token => uint256) public ethRaisedForLp;
+    /// @notice 已预留、毕业时再铸造进池的 meme（按 mint 价折算）
+    mapping(address token => uint256) public memeReservedForLp;
     mapping(address token => bool) public graduated;
-    /// @notice creator 待领取手续费（pull payment，避免 creator 拒收 ETH 卡死 mint）
     mapping(address account => uint256) public pendingFees;
 
     event MemeDeployed(
@@ -58,13 +60,13 @@ contract LaunchPad is ReentrancyGuard {
         address indexed minter,
         uint256 memeAmount,
         uint256 ethPaid,
-        uint256 ethForLiquidity,
-        uint256 memeForLiquidity,
+        uint256 ethLockedForLp,
+        uint256 memeReserved,
         uint256 ethForCreator
     );
     event MemeBought(address indexed token, address indexed buyer, uint256 ethIn, uint256 memeOut);
     event LiquidityAdded(address indexed token, uint256 amountToken, uint256 amountETH, uint256 liquidity);
-    event Graduated(address indexed token, uint256 ethRaisedForLp);
+    event Graduated(address indexed token, uint256 ethForLp, uint256 memeForLp);
     event FeesClaimed(address indexed account, uint256 amount);
 
     constructor(address router_) {
@@ -75,18 +77,13 @@ contract LaunchPad is ReentrancyGuard {
         implementation = address(new MemeToken(address(this)));
     }
 
-    /// @dev 仅接受 Router 加池退回的 ETH；其它转入也会被 bal0 会计留下，不会误退给 minter
     receive() external payable {}
 
     /// @notice 克隆部署 Meme。
-    /// @param symbol token 代号
-    /// @param maxSupply 铸造上限（须能被单次 mint 消耗量整除，避免尾量卡死）
-    /// @param perMint 每次 mint 给买家的数量
-    /// @param price 每次 mint 支付的 ETH（wei）
-    /// @param graduationEth_ 累计加池 ETH 达到该值后毕业；须 > 0
+    /// @param maxSupply 须能被 `(perMint + 单次预留LP meme)` 整除，且足够 mint 到毕业门槛
+    /// @param graduationEth_ 锁定的加池 ETH 累计达到该值后可毕业
     ///
-    /// 示例：`deployMeme("DOGE", 1990e18 * 10, 1000e18, 1 ether, 10 ether)`
-    /// — 单次消耗 1000+990 枚；graduation 约 10 次 mint（每次 ~0.99 ETH 进池）后关闭 mint。
+    /// 示例：`deployMeme("DOGE", 1990e18 * 20, 1000e18, 1 ether, 10 ether)`
     function deployMeme(
         string memory symbol,
         uint256 maxSupply,
@@ -101,10 +98,13 @@ contract LaunchPad is ReentrancyGuard {
 
         uint256 memeForLp = _memeForLiquidity(price, perMint);
         if (memeForLp == 0) revert InvalidSupply();
+        // perMint 给用户，memeForLp 后续添加流动性
         uint256 mintUnit = perMint + memeForLp;
-        if (maxSupply < mintUnit) revert InvalidSupply();
-        // 避免尾量不足以再 mint 却永远占着 maxSupply
-        if (maxSupply % mintUnit != 0) revert InvalidSupply();
+        if (maxSupply < mintUnit || maxSupply % mintUnit != 0) revert InvalidSupply();
+
+        uint256 ethForLp = price - (price * CREATOR_FEE_BPS) / BPS_DENOMINATOR;
+        // 最多 mint 次数 × 每次锁定的 ETH，必须 ≥ 毕业门槛，否则永远筹不够、无法毕业
+        if ((maxSupply / mintUnit) * ethForLp < graduationEth_) revert InvalidGraduation();
 
         token = Clones.clone(implementation);
         isMeme[token] = true;
@@ -114,15 +114,8 @@ contract LaunchPad is ReentrancyGuard {
         emit MemeDeployed(token, msg.sender, symbol, maxSupply, perMint, price, graduationEth_);
     }
 
-    /// @notice 固定价 mint（毕业前）。ETH：1% → pendingFees[creator]；其余尽量加池；找零退回调用者。
-    /// @param amountTokenMin / amountETHMin 加池滑点保护（首次可传精确期望值）
-    /// @param deadline 交易截止时间
-    function mintMeme(address tokenAddr, uint256 amountTokenMin, uint256 amountETHMin, uint256 deadline)
-        external
-        payable
-        nonReentrant
-    {
-        if (block.timestamp > deadline) revert Expired();
+    /// @notice 固定价 mint：只铸给买家；99% ETH 锁仓，meme 仅记账预留，不立即加池。
+    function mintMeme(address tokenAddr) external payable nonReentrant {
         if (!isMeme[tokenAddr]) revert UnknownMeme();
         if (graduated[tokenAddr]) revert AlreadyGraduated();
 
@@ -132,39 +125,52 @@ contract LaunchPad is ReentrancyGuard {
         if (msg.value != price) revert InvalidPayment();
 
         uint256 ethForCreator = (msg.value * CREATOR_FEE_BPS) / BPS_DENOMINATOR;
-        // 在 DEX 上添加流动性的 ETH 和 meme
         uint256 ethForLp = msg.value - ethForCreator;
         uint256 memeForLp = (ethForLp * perMint) / price;
 
-        uint256 remaining = token.maxSupply() - token.totalSupply();
-        // perMint 给用户，memeForLp 给 LP 池
-        if (remaining < perMint + memeForLp) revert InsufficientMintRoom();
+        // 已铸造的 meme + 预留的 meme，不能超过 maxSupply（预留的 meme 后续统一铸造并添加流动性）
+        uint256 committed = token.totalSupply() + memeReservedForLp[tokenAddr];
+        if (token.maxSupply() - committed < perMint + memeForLp) revert InsufficientMintRoom();
 
-        // 预存「外来 ETH」，退款时只退本笔产生的余额增量，避免扫走捐赠款
-        uint256 bal0 = address(this).balance - msg.value;
-
-        // 铸造给用户
+        // 铸造 meme 给买家
         token.mint(msg.sender, perMint);
-        // 铸造给 LP 池
-        token.mint(address(this), memeForLp);
-        _addLiquidity(tokenAddr, memeForLp, ethForLp, amountTokenMin, amountETHMin, deadline);
 
+        // 记录锁定的 ETH 和预留的 meme，后续统一铸造并添加流动性
         ethRaisedForLp[tokenAddr] += ethForLp;
+        memeReservedForLp[tokenAddr] += memeForLp;
+        // 记录 creator 的 creator fee
         pendingFees[token.creator()] += ethForCreator;
-
-        // 本笔应留给手续费的 ETH 仍在合约内；其余（含 Router 找零）退回调用者
-        uint256 refund = address(this).balance - bal0 - ethForCreator;
-        _sendEth(msg.sender, refund);
 
         emit MemeMinted(tokenAddr, msg.sender, perMint, msg.value, ethForLp, memeForLp, ethForCreator);
 
-        _maybeGraduate(tokenAddr);
+        if (_readyToGraduate(tokenAddr)) {
+            uint256 ethLp = ethRaisedForLp[tokenAddr];
+            uint256 memeLp = memeReservedForLp[tokenAddr]; // 预留的 meme 数量，还没有铸造
+            // 首次建池，min = 全额（按 mint 价配比，无已有储备）
+            _graduate(tokenAddr, memeLp, ethLp, memeLp, ethLp, block.timestamp);
+        }
     }
 
-    /// @notice 按 Uniswap V2 池价买 meme（需自行设 amountOutMin / deadline）。
+    /// @notice 达标后可手动毕业（例如想自定义 deadline/min）；通常最后一笔 mint 已自动毕业。
+    function graduate(address tokenAddr, uint256 amountTokenMin, uint256 amountETHMin, uint256 deadline)
+        external
+        nonReentrant
+    {
+        if (block.timestamp > deadline) revert Expired();
+        if (!isMeme[tokenAddr]) revert UnknownMeme();
+        if (graduated[tokenAddr]) revert AlreadyGraduated();
+        if (!_readyToGraduate(tokenAddr)) revert GraduationNotReady();
+
+        uint256 ethLp = ethRaisedForLp[tokenAddr];
+        uint256 memeLp = memeReservedForLp[tokenAddr];
+        _graduate(tokenAddr, memeLp, ethLp, amountTokenMin, amountETHMin, deadline);
+    }
+
+    /// @notice 毕业后按 Uniswap 池价买入。
     function buyMeme(address tokenAddr, uint256 amountOutMin, uint256 deadline) external payable nonReentrant {
         if (block.timestamp > deadline) revert Expired();
         if (!isMeme[tokenAddr]) revert UnknownMeme();
+        if (!graduated[tokenAddr]) revert NotGraduated();
         if (msg.value == 0) revert ZeroValue();
 
         address[] memory path = new address[](2);
@@ -177,7 +183,6 @@ contract LaunchPad is ReentrancyGuard {
         emit MemeBought(tokenAddr, msg.sender, msg.value, amounts[amounts.length - 1]);
     }
 
-    /// @notice creator（或任何有 pending 的地址）领取手续费。
     function claimFees() external nonReentrant {
         uint256 amount = pendingFees[msg.sender];
         if (amount == 0) revert NoFees();
@@ -186,31 +191,49 @@ contract LaunchPad is ReentrancyGuard {
         emit FeesClaimed(msg.sender, amount);
     }
 
-    /// @dev 单次 mint 进池 meme 数量（与 mintMeme 相同）。
     function _memeForLiquidity(uint256 price, uint256 perMint) internal pure returns (uint256) {
         uint256 ethForCreator = (price * CREATOR_FEE_BPS) / BPS_DENOMINATOR;
+        // ethForLp: 用于 DEX 的 ETH，返回值: ethForLp ETH 对应的 meme 数量
         uint256 ethForLp = price - ethForCreator;
         return (ethForLp * perMint) / price;
     }
 
-    function _maybeGraduate(address tokenAddr) internal {
-        if (graduated[tokenAddr]) return;
+    function _readyToGraduate(address tokenAddr) internal view returns (bool) {
+        // 锁定的 ETH 达到毕业门槛
+        if (ethRaisedForLp[tokenAddr] >= graduationEth[tokenAddr]) return true;
 
+        // 检查是否支持下一轮 mint，如果不支持下一轮 mint，则立刻毕业
         MemeToken token = MemeToken(tokenAddr);
         uint256 memeForLp = _memeForLiquidity(token.price(), token.perMint());
-        uint256 mintUnit = token.perMint() + memeForLp;
-        uint256 remaining = token.maxSupply() - token.totalSupply();
+        uint256 committed = token.totalSupply() + memeReservedForLp[tokenAddr];
+        return token.maxSupply() - committed < token.perMint() + memeForLp;
+    }
 
-        bool hitRaise = ethRaisedForLp[tokenAddr] >= graduationEth[tokenAddr];
-        bool soldOut = remaining < mintUnit;
+    function _graduate(
+        address tokenAddr,
+        uint256 memeForLp,
+        uint256 ethForLp,
+        uint256 amountTokenMin,
+        uint256 amountETHMin,
+        uint256 deadline
+    ) internal {
+        graduated[tokenAddr] = true;
+        ethRaisedForLp[tokenAddr] = 0;
+        memeReservedForLp[tokenAddr] = 0;
 
-        // 达到毕业条件
-        //1. 达到累计加池 ETH 目标
-        //2. 达到铸造上限，无法支撑下一次 mint
-        if (hitRaise || soldOut) {
-            graduated[tokenAddr] = true;
-            emit Graduated(tokenAddr, ethRaisedForLp[tokenAddr]);
+        // 加池前余额含 pendingFees / 捐赠；加池后多出来的是 Router ETH 找零
+        uint256 balBefore = address(this).balance - ethForLp;
+
+        MemeToken(tokenAddr).mint(address(this), memeForLp);
+        _addLiquidity(tokenAddr, memeForLp, ethForLp, amountTokenMin, amountETHMin, deadline);
+
+        // 首池按 mint 价通常无找零；若有未用完的 ETH，记入 creator 待领（不再退给某次 mint 的人）
+        uint256 ethRefund = address(this).balance - balBefore;
+        if (ethRefund > 0) {
+            pendingFees[MemeToken(tokenAddr).creator()] += ethRefund;
         }
+
+        emit Graduated(tokenAddr, ethForLp, memeForLp);
     }
 
     function _addLiquidity(
@@ -227,7 +250,7 @@ contract LaunchPad is ReentrancyGuard {
             token, amountToken, amountTokenMin, amountETHMin, address(0), deadline
         );
 
-        // 销毁剩余的 meme, 避免滞留在本合约
+        // 未用完的 meme → DEAD；未用完的 ETH 由 Router 退回本合约，在 _graduate 里记入 pendingFees
         uint256 dustMeme = IERC20(token).balanceOf(address(this));
         if (dustMeme > 0) IERC20(token).transfer(DEAD, dustMeme);
 
@@ -240,34 +263,30 @@ contract LaunchPad is ReentrancyGuard {
         if (!ok) revert EthTransferFailed();
     }
 
-    /// @notice 辅助：按当前池储备，给出去 amountETH 期望换到的 token 量（未含手续费精确报价可用 getAmountsOut）。
-    function previewBuy(address tokenAddr, uint256 ethIn) external view returns (uint256 memeOut) {
+    function previewBuy(address tokenAddr, uint256 ethIn) external view returns (uint256) {
         address[] memory path = new address[](2);
         path[0] = WETH;
         path[1] = tokenAddr;
-        uint256[] memory amounts = router.getAmountsOut(ethIn, path);
-        return amounts[1];
+        return router.getAmountsOut(ethIn, path)[1];
     }
 
-    /// @notice 辅助：首次加池时建议的 min（按 mint 价，可再自行打折）。
-    function previewMintLpAmounts(address tokenAddr)
+    /// @notice 单次 mint 会锁定的 ETH / 预留的 meme
+    function previewMintLockAmounts(address tokenAddr)
         external
         view
-        returns (uint256 ethForLp, uint256 memeForLp)
+        returns (uint256 ethLocked, uint256 memeReserved)
     {
         if (!isMeme[tokenAddr]) revert UnknownMeme();
         MemeToken token = MemeToken(tokenAddr);
         uint256 price = token.price();
-        ethForLp = price - (price * CREATOR_FEE_BPS) / BPS_DENOMINATOR;
-        memeForLp = _memeForLiquidity(price, token.perMint());
+        ethLocked = price - (price * CREATOR_FEE_BPS) / BPS_DENOMINATOR;
+        memeReserved = _memeForLiquidity(price, token.perMint());
     }
 
-    /// @notice 池是否已存在（二次 mint 时 caller 应用 quote 设 min）。
     function hasPool(address tokenAddr) external view returns (bool) {
         return IUniswapV2Factory(uniFactory).getPair(tokenAddr, WETH) != address(0);
     }
 
-    /// @notice 读池储备 (meme, weth)，无池返回 (0,0)。
     function getReserves(address tokenAddr) external view returns (uint256 reserveMeme, uint256 reserveWeth) {
         address pair = IUniswapV2Factory(uniFactory).getPair(tokenAddr, WETH);
         if (pair == address(0)) return (0, 0);
