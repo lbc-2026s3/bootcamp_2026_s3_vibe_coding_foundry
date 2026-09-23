@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {UniswapV2Factory} from "../../uniswapv2/UniswapV2Factory.sol";
-import {UniswapV2Router02} from "../../uniswapv2/UniswapV2Router02.sol";
-import {UniswapV2Pair} from "../../uniswapv2/UniswapV2Pair.sol";
-import {IUniswapV2Pair} from "../../uniswapv2/interfaces/IUniswapV2Pair.sol";
-import {WETH9} from "../../uniswapv2/WETH9.sol";
+import {UniswapV2Factory} from "uniswapv2/UniswapV2Factory.sol";
+import {UniswapV2Router02} from "uniswapv2/UniswapV2Router02.sol";
+import {UniswapV2Pair} from "uniswapv2/UniswapV2Pair.sol";
+import {IUniswapV2Pair} from "uniswapv2/interfaces/IUniswapV2Pair.sol";
+import {WETH9} from "uniswapv2/WETH9.sol";
 import {MyTokenV1} from "../../src/MyTokenV1.sol";
 
 /// @notice UniswapV2Router02 核心路径:加池 / 兑换 / 撤池 / 截止时间

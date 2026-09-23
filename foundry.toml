@@ -6,6 +6,12 @@ solc_version = "0.8.34"
 # solc 0.8.34 + via_ir 会在编译 script/ 时触发 Yul stack-too-deep（length_1 / memoryguard）
 # 关闭 via_ir 后全量编译可通过；若个别合约再报 stack too deep 再针对性拆函数
 via_ir = false
+# 旧版 periphery 示例 / Oracle 辅助库（pragma 0.5–0.6 + @uniswap/lib），仅供阅读；勿纳入 0.8.34 编译图
+skip = [
+    "src/uniswapv2/examples/*",
+    "src/uniswapv2/libraries/UniswapV2OracleLibrary.sol",
+    "src/uniswapv2/libraries/UniswapV2LiquidityMathLibrary.sol",
+]
 # openzeppelin-foundry-upgrades: 升级安全校验（Upgrades.sol）需要 ffi + AST + storage layout
 ffi = true
 ast = true

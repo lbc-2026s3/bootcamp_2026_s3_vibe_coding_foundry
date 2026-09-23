@@ -10,6 +10,7 @@ contract UniswapV2Factory is IUniswapV2Factory {
     address public override feeToSetter;
 
     mapping(address => mapping(address => address)) public override getPair;
+    // UniswapV2Pair address array
     address[] public override allPairs;
 
 

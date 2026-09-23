@@ -4,6 +4,8 @@ pragma solidity ^0.8.24;
 import './interfaces/IUniswapV2ERC20.sol';
 import './libraries/SafeMath.sol';
 
+// LP token
+// ERC20-Permit
 contract UniswapV2ERC20 is IUniswapV2ERC20 {
     using SafeMath for uint;
 

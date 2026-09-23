@@ -3,9 +3,9 @@ pragma solidity ^0.8.24;
 
 import {console} from "forge-std/Script.sol";
 import {BaseScript} from "../BaseScript.s.sol";
-import {UniswapV2Factory} from "../../uniswapv2/UniswapV2Factory.sol";
-import {UniswapV2Router02} from "../../uniswapv2/UniswapV2Router02.sol";
-import {WETH9} from "../../uniswapv2/WETH9.sol";
+import {UniswapV2Factory} from "uniswapv2/UniswapV2Factory.sol";
+import {UniswapV2Router02} from "uniswapv2/UniswapV2Router02.sol";
+import {WETH9} from "uniswapv2/WETH9.sol";
 import {MyTokenV1} from "../../src/MyTokenV1.sol";
 
 /// @notice 部署 Uniswap V2 Factory + WETH9 + Router02，可选部署演示代币并加初始流动性
