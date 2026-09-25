@@ -117,7 +117,8 @@ contract PoolATwapOracle {
         }
     }
 
-    /// @notice 现货价 token1/token0，缩放 1e18（仅对比用，可被闪电贷操纵）
+    /// @notice 现货价 token1/token0，缩放 1e18
+    /// @dev 实时价格（spot）不安全：单笔 swap / 闪电贷可在同一交易内操纵，勿作清算、借贷抵押率等定价依据。
     function spotPrice1Per0() external view returns (uint256) {
         (uint112 reserve0, uint112 reserve1,) = IUniswapV2Pair(pair).getReserves();
         require(reserve0 > 0, "NO_RESERVES");
@@ -125,6 +126,7 @@ contract PoolATwapOracle {
     }
 
     /// @notice TWAP 价 token1/token0，缩放 1e18（需先 update）
+    /// @dev 时间加权平均价格相对安全：操纵需在整个 `period` 内持续顶价，成本更高；仍需合理窗口与二次校验。
     function twapPrice1Per0() external view returns (uint256) {
         require(updated, "NOT_UPDATED");
         return (uint256(price0Average) * 1e18) >> 112;
