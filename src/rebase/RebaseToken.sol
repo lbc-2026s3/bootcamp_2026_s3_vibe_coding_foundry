@@ -61,10 +61,9 @@ contract RebaseToken is ERC20 {
     }
 
     /// @inheritdoc ERC20
-    /// @dev `balance = shares * tokenSupply / totalShares`，rebase 后随供给下降。
+    /// @dev `balance = sharesToToken(shares)`，rebase 后随供给下降。
     function balanceOf(address account) public view override returns (uint256) {
-        if (_totalShares == 0) return 0;
-        return (_shares[account] * _tokenSupply) / _totalShares;
+        return sharesToToken(_shares[account]);
     }
 
     /// @notice 当前账户持有的份额（rebase 不改变份额）
@@ -75,6 +74,18 @@ contract RebaseToken is ERC20 {
     /// @notice 全网份额总量
     function totalShares() external view returns (uint256) {
         return _totalShares;
+    }
+
+    /// @notice 代币数量 → 份额：`tokenAmount * totalShares / tokenSupply`
+    function tokenToShares(uint256 tokenAmount) public view returns (uint256) {
+        if (_tokenSupply == 0) return 0;
+        return (tokenAmount * _totalShares) / _tokenSupply;
+    }
+
+    /// @notice 份额 → 代币数量：`shareAmount * tokenSupply / totalShares`
+    function sharesToToken(uint256 shareAmount) public view returns (uint256) {
+        if (_totalShares == 0) return 0;
+        return (shareAmount * _tokenSupply) / _totalShares;
     }
 
     /// @notice 下一次允许 rebase 的时间戳
@@ -122,15 +133,13 @@ contract RebaseToken is ERC20 {
         }
 
         // 转出全部余额时带走全部份额，避免舍入粉尘
-        uint256 shareAmount =
-            value == fromBalance ? _shares[from] : (value * _totalShares) / _tokenSupply;
+        uint256 shareAmount = value == fromBalance ? _shares[from] : tokenToShares(value);
 
         if (shareAmount == 0) revert TransferTooSmall(value);
 
         // rebase 后 tokenSupply < totalShares 时，极小金额可能分到份额但 balanceOf 仍为 0
-        if (to != address(0)) {
-            uint256 credited = (shareAmount * _tokenSupply) / _totalShares;
-            if (credited == 0) revert TransferTooSmall(value);
+        if (to != address(0) && sharesToToken(shareAmount) == 0) {
+            revert TransferTooSmall(value);
         }
 
         unchecked {

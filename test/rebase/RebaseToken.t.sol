@@ -23,6 +23,22 @@ contract RebaseTokenTest is Test {
         assertEq(token.rebaseCount(), 0);
     }
 
+    function test_TokenSharesConversion() public {
+        // 初始 1:1
+        assertEq(token.tokenToShares(100 ether), 100 ether);
+        assertEq(token.sharesToToken(100 ether), 100 ether);
+
+        vm.warp(block.timestamp + token.YEAR());
+        token.rebase();
+
+        // rebase 后：同样 100 token 对应更多份额；同样份额对应更少 token
+        assertGt(token.tokenToShares(100 ether), 100 ether);
+        assertLt(token.sharesToToken(100 ether), 100 ether);
+
+        assertEq(token.sharesToToken(token.sharesOf(alice)), token.balanceOf(alice));
+        assertEq(token.tokenToShares(token.balanceOf(alice)), token.sharesOf(alice));
+    }
+
     function test_RevertWhen_RebaseBeforeOneYear() public {
         vm.expectRevert(
             abi.encodeWithSelector(RebaseToken.RebaseTooEarly.selector, token.nextRebaseTimestamp())

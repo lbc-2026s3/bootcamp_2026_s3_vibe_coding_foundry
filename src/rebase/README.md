@@ -5,7 +5,9 @@
 ## 核心公式
 
 ```
-balanceOf(user) = sharesOf(user) × totalSupply / totalShares
+balanceOf(user) = sharesToToken(sharesOf(user))
+tokenToShares(amount) = amount × totalShares / totalSupply
+sharesToToken(shares) = shares × totalSupply / totalShares
 rebase 后：totalSupply ← totalSupply × 99 / 100（份额不变）
 ```
 
