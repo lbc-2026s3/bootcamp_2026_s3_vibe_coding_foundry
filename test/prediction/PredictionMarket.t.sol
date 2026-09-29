@@ -121,4 +121,41 @@ contract PredictionMarketTest is Test {
         vm.expectRevert(PredictionMarket.MarketClosed.selector);
         market.removeLiquidity(1, 0, 0);
     }
+
+    function test_SwapYesForNoMovesPrice() public {
+        _seedPool(alice, 100e6, 100e6);
+        uint256 priceBefore = market.getYesPrice();
+
+        address bob = makeAddr("bob");
+        _split(bob, 50e6);
+        vm.startPrank(bob);
+        market.yesToken().approve(address(market), 10e6);
+        market.swapYesForNo(10e6, 0);
+        vm.stopPrank();
+
+        assertLt(market.getYesPrice(), priceBefore);
+    }
+
+    function test_SwapIncreasesK() public {
+        _seedPool(alice, 100e6, 100e6);
+        uint256 kBefore = market.yesReserve() * market.noReserve();
+        address bob = makeAddr("bob");
+        _split(bob, 20e6);
+        vm.startPrank(bob);
+        market.yesToken().approve(address(market), 5e6);
+        market.swapYesForNo(5e6, 0);
+        vm.stopPrank();
+        assertGe(market.yesReserve() * market.noReserve(), kBefore);
+    }
+
+    function test_RevertWhen_SwapSlippage() public {
+        _seedPool(alice, 100e6, 100e6);
+        address bob = makeAddr("bob");
+        _split(bob, 10e6);
+        vm.startPrank(bob);
+        market.yesToken().approve(address(market), 1e6);
+        vm.expectRevert(PredictionMarket.Slippage.selector);
+        market.swapYesForNo(1e6, type(uint256).max);
+        vm.stopPrank();
+    }
 }

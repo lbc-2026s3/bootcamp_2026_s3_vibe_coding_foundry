@@ -43,6 +43,7 @@ contract PredictionMarket is ReentrancyGuard {
     event Merged(address indexed user, uint256 amount);
     event LiquidityAdded(address indexed provider, uint256 yesAmount, uint256 noAmount, uint256 lpMinted);
     event LiquidityRemoved(address indexed provider, uint256 yesAmount, uint256 noAmount, uint256 lpBurned);
+    event Swapped(address indexed trader, bool yesForNo, uint256 amountIn, uint256 amountOut);
 
     /// @param question_ 市场问题
     /// @param collateral_ 抵押品 ERC20
@@ -144,6 +145,80 @@ contract PredictionMarket is ReentrancyGuard {
         IERC20(address(noToken)).safeTransfer(msg.sender, noOut);
 
         emit LiquidityRemoved(msg.sender, yesOut, noOut, lpAmount);
+    }
+
+    /// @notice 卖 YES 买 NO（CPAMM，含 FEE_BPS）。
+    function swapYesForNo(uint256 amountIn, uint256 minOut)
+        external
+        nonReentrant
+        returns (uint256 amountOut)
+    {
+        amountOut = _swap(true, amountIn, minOut);
+    }
+
+    /// @notice 卖 NO 买 YES（CPAMM，含 FEE_BPS）。
+    function swapNoForYes(uint256 amountIn, uint256 minOut)
+        external
+        nonReentrant
+        returns (uint256 amountOut)
+    {
+        amountOut = _swap(false, amountIn, minOut);
+    }
+
+    /// @notice YES 价格 = noReserve / (yesReserve + noReserve)，1e18 精度。
+    function getYesPrice() public view returns (uint256) {
+        uint256 total = yesReserve + noReserve;
+        if (total == 0) return 0;
+        return (noReserve * 1e18) / total;
+    }
+
+    /// @notice 预览卖 YES 买 NO 的 amountOut。
+    function previewSwapYesForNo(uint256 amountIn) public view returns (uint256) {
+        return _getAmountOut(amountIn, yesReserve, noReserve);
+    }
+
+    /// @notice 预览卖 NO 买 YES 的 amountOut。
+    function previewSwapNoForYes(uint256 amountIn) public view returns (uint256) {
+        return _getAmountOut(amountIn, noReserve, yesReserve);
+    }
+
+    function _swap(bool yesForNo, uint256 amountIn, uint256 minOut) internal returns (uint256 amountOut) {
+        if (amountIn == 0) revert ZeroAmount();
+        if (!_tradingOpen()) revert MarketClosed();
+
+        uint256 reserveIn = yesForNo ? yesReserve : noReserve;
+        uint256 reserveOut = yesForNo ? noReserve : yesReserve;
+        if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
+
+        amountOut = _getAmountOut(amountIn, reserveIn, reserveOut);
+        if (amountOut < minOut) revert Slippage();
+
+        if (yesForNo) {
+            IERC20(address(yesToken)).safeTransferFrom(msg.sender, address(this), amountIn);
+            yesReserve = reserveIn + amountIn;
+            noReserve = reserveOut - amountOut;
+            IERC20(address(noToken)).safeTransfer(msg.sender, amountOut);
+        } else {
+            IERC20(address(noToken)).safeTransferFrom(msg.sender, address(this), amountIn);
+            noReserve = reserveIn + amountIn;
+            yesReserve = reserveOut - amountOut;
+            IERC20(address(yesToken)).safeTransfer(msg.sender, amountOut);
+        }
+
+        emit Swapped(msg.sender, yesForNo, amountIn, amountOut);
+    }
+
+    /// @dev amountInWithFee = amountIn * (10_000 - FEE_BPS) / 10_000
+    ///      amountOut = amountInWithFee * reserveOut / (reserveIn + amountInWithFee)
+    function _getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (amountIn == 0) return 0;
+        if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
+        uint256 amountInWithFee = (amountIn * (10_000 - FEE_BPS)) / 10_000;
+        return (amountInWithFee * reserveOut) / (reserveIn + amountInWithFee);
     }
 
     function _tradingOpen() internal view returns (bool) {
