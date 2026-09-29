@@ -175,7 +175,7 @@ contract PredictionMarket is ReentrancyGuard {
     /// @notice YES 价格 = noReserve / (yesReserve + noReserve)，1e18 精度。
     function getYesPrice() public view returns (uint256) {
         uint256 total = yesReserve + noReserve;
-        if (total == 0) return 0;
+        if (total == 0) revert InsufficientLiquidity();
         return (noReserve * 1e18) / total;
     }
 

@@ -122,6 +122,11 @@ contract PredictionMarketTest is Test {
         market.removeLiquidity(1, 0, 0);
     }
 
+    function test_RevertWhen_GetYesPriceEmptyPool() public {
+        vm.expectRevert(PredictionMarket.InsufficientLiquidity.selector);
+        market.getYesPrice();
+    }
+
     function test_SwapYesForNoMovesPrice() public {
         _seedPool(alice, 100e6, 100e6);
         uint256 priceBefore = market.getYesPrice();
