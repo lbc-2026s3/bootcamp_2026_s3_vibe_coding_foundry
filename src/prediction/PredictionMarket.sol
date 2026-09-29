@@ -38,12 +38,19 @@ contract PredictionMarket is ReentrancyGuard {
     error Slippage();
     error InsufficientLiquidity();
     error InvalidLiquidityRatio();
+    error NotOracle();
+    error DeadlineNotReached();
+    error AlreadyResolved();
+    error NotResolved();
+    error NothingToRedeem();
 
     event Split(address indexed user, uint256 amount);
     event Merged(address indexed user, uint256 amount);
     event LiquidityAdded(address indexed provider, uint256 yesAmount, uint256 noAmount, uint256 lpMinted);
     event LiquidityRemoved(address indexed provider, uint256 yesAmount, uint256 noAmount, uint256 lpBurned);
     event Swapped(address indexed trader, bool yesForNo, uint256 amountIn, uint256 amountOut);
+    event Resolved(bool yesWins);
+    event Redeemed(address indexed user, uint256 amount);
 
     /// @param question_ 市场问题
     /// @param collateral_ 抵押品 ERC20
@@ -180,6 +187,31 @@ contract PredictionMarket is ReentrancyGuard {
     /// @notice 预览卖 NO 买 YES 的 amountOut。
     function previewSwapNoForYes(uint256 amountIn) public view returns (uint256) {
         return _getAmountOut(amountIn, noReserve, yesReserve);
+    }
+
+    /// @notice 截止后由 oracle 裁定一次结果。
+    function resolve(bool yesWins_) external {
+        if (msg.sender != oracle) revert NotOracle();
+        if (block.timestamp < deadline) revert DeadlineNotReached();
+        if (resolved) revert AlreadyResolved();
+
+        resolved = true;
+        yesWins = yesWins_;
+        emit Resolved(yesWins_);
+    }
+
+    /// @notice 销毁全部赢家份额，1:1 兑付抵押品。
+    function redeem() external nonReentrant {
+        if (!resolved) revert NotResolved();
+
+        OutcomeToken winner = yesWins ? yesToken : noToken;
+        uint256 amount = winner.balanceOf(msg.sender);
+        if (amount == 0) revert NothingToRedeem();
+
+        winner.burn(msg.sender, amount);
+        collateral.safeTransfer(msg.sender, amount);
+
+        emit Redeemed(msg.sender, amount);
     }
 
     function _swap(bool yesForNo, uint256 amountIn, uint256 minOut) internal returns (uint256 amountOut) {

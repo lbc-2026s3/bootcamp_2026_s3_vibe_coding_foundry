@@ -158,4 +158,61 @@ contract PredictionMarketTest is Test {
         market.swapYesForNo(1e6, type(uint256).max);
         vm.stopPrank();
     }
+
+    function test_ResolveAndRedeemYesWins() public {
+        _split(alice, 100e6);
+        vm.warp(deadline);
+        vm.prank(oracle);
+        market.resolve(true);
+
+        uint256 before = usdc.balanceOf(alice);
+        vm.prank(alice);
+        market.redeem();
+        assertEq(usdc.balanceOf(alice), before + 100e6);
+        assertEq(market.yesToken().balanceOf(alice), 0);
+    }
+
+    function test_LoserRedeemReverts() public {
+        address bob = makeAddr("bob");
+        _split(bob, 50e6);
+        OutcomeToken yes = market.yesToken();
+        vm.prank(bob);
+        yes.transfer(alice, 50e6);
+
+        vm.warp(deadline);
+        vm.prank(oracle);
+        market.resolve(true);
+
+        vm.prank(bob);
+        vm.expectRevert(PredictionMarket.NothingToRedeem.selector);
+        market.redeem();
+    }
+
+    function test_RevertWhen_ResolveBeforeDeadline() public {
+        vm.prank(oracle);
+        vm.expectRevert(PredictionMarket.DeadlineNotReached.selector);
+        market.resolve(true);
+    }
+
+    function test_RevertWhen_NonOracleResolves() public {
+        vm.warp(deadline);
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.NotOracle.selector);
+        market.resolve(true);
+    }
+
+    function test_LpCanRemoveAfterResolveThenRedeem() public {
+        _seedPool(alice, 100e6, 100e6);
+        vm.warp(deadline);
+        vm.prank(oracle);
+        market.resolve(true);
+
+        uint256 lp = market.lpBalances(alice);
+        vm.prank(alice);
+        market.removeLiquidity(lp, 0, 0);
+
+        vm.prank(alice);
+        market.redeem();
+        assertGt(usdc.balanceOf(alice), 0);
+    }
 }
