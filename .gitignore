@@ -18,3 +18,6 @@ out/
 
 broadcast/
 deployments/
+
+# Git worktrees (local isolation; never commit)
+.worktrees/
