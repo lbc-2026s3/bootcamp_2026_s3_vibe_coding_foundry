@@ -215,4 +215,51 @@ contract PredictionMarketTest is Test {
         market.redeem();
         assertGt(usdc.balanceOf(alice), 0);
     }
+
+    function testFuzz_SplitMergeRoundtrip(uint256 amount) public {
+        amount = bound(amount, 1, 100_000e6);
+        usdc.mint(alice, amount);
+        vm.startPrank(alice);
+        usdc.approve(address(market), amount);
+        uint256 colBefore = usdc.balanceOf(alice);
+        market.split(amount);
+        market.merge(amount);
+        vm.stopPrank();
+        assertEq(usdc.balanceOf(alice), colBefore);
+        assertEq(market.yesToken().balanceOf(alice), 0);
+    }
+
+    function testFuzz_SwapKNeverDecreases(uint256 amountIn) public {
+        _seedPool(alice, 1_000e6, 1_000e6);
+        amountIn = bound(amountIn, 1e6, 100e6);
+        address bob = makeAddr("bob");
+        _split(bob, amountIn);
+        uint256 kBefore = market.yesReserve() * market.noReserve();
+        vm.startPrank(bob);
+        market.yesToken().approve(address(market), amountIn);
+        market.swapYesForNo(amountIn, 0);
+        vm.stopPrank();
+        assertGe(market.yesReserve() * market.noReserve(), kBefore);
+    }
+
+    function test_RevertWhen_DoubleResolve() public {
+        vm.warp(deadline);
+        vm.prank(oracle);
+        market.resolve(false);
+        vm.prank(oracle);
+        vm.expectRevert(PredictionMarket.AlreadyResolved.selector);
+        market.resolve(false);
+    }
+
+    function test_RedeemNoWins() public {
+        _split(alice, 80e6);
+        vm.warp(deadline);
+        vm.prank(oracle);
+        market.resolve(false);
+        uint256 before = usdc.balanceOf(alice);
+        vm.prank(alice);
+        market.redeem();
+        assertEq(usdc.balanceOf(alice), before + 80e6);
+        assertEq(market.noToken().balanceOf(alice), 0);
+    }
 }
