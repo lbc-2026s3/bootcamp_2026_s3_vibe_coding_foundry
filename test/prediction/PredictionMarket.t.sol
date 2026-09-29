@@ -70,4 +70,55 @@ contract PredictionMarketTest is Test {
         market.split(1e6);
         vm.stopPrank();
     }
+
+    function _split(address user, uint256 amount) internal {
+        usdc.mint(user, amount);
+        vm.startPrank(user);
+        usdc.approve(address(market), amount);
+        market.split(amount);
+        vm.stopPrank();
+    }
+
+    function _seedPool(address user, uint256 yesAmount, uint256 noAmount) internal {
+        _split(user, yesAmount > noAmount ? yesAmount : noAmount);
+        vm.startPrank(user);
+        market.yesToken().approve(address(market), yesAmount);
+        market.noToken().approve(address(market), noAmount);
+        market.addLiquidity(yesAmount, noAmount, 0);
+        vm.stopPrank();
+    }
+
+    function test_AddLiquiditySeedsReserves() public {
+        _split(alice, 200e6);
+        vm.startPrank(alice);
+        market.yesToken().approve(address(market), 100e6);
+        market.noToken().approve(address(market), 100e6);
+        uint256 lp = market.addLiquidity(100e6, 100e6, 0);
+        vm.stopPrank();
+
+        assertEq(market.yesReserve(), 100e6);
+        assertEq(market.noReserve(), 100e6);
+        assertEq(lp, market.totalLp() - market.MINIMUM_LIQUIDITY());
+        assertEq(market.lpBalances(alice), lp);
+    }
+
+    function test_RemoveLiquidityReturnsProRata() public {
+        _seedPool(alice, 100e6, 100e6);
+        uint256 lp = market.lpBalances(alice);
+
+        vm.prank(alice);
+        (uint256 y, uint256 n) = market.removeLiquidity(lp, 0, 0);
+
+        assertGt(y, 0);
+        assertGt(n, 0);
+        assertEq(market.lpBalances(alice), 0);
+    }
+
+    function test_RevertWhen_RemoveDuringTradingClosed() public {
+        _seedPool(alice, 100e6, 100e6);
+        vm.warp(deadline);
+        vm.prank(alice);
+        vm.expectRevert(PredictionMarket.MarketClosed.selector);
+        market.removeLiquidity(1, 0, 0);
+    }
 }
