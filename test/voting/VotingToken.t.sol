@@ -11,6 +11,7 @@ contract VotingTokenTest is Test {
     address internal owner = makeAddr("owner");
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
+    address internal carol = makeAddr("carol");
 
     uint256 internal constant INITIAL = 1_000_000e18;
 
@@ -45,7 +46,32 @@ contract VotingTokenTest is Test {
         assertEq(token.balanceOf(alice), 100e18);
         assertEq(token.getVotes(alice), 0);
         assertEq(token.getVotes(bob), 100e18);
+        assertEq(token.balanceOf(bob), 0);
         assertEq(token.delegates(alice), bob);
+    }
+
+    /// @dev 多人委托给同一人：被委托人票权累加，持币人各自余额不变
+    function test_MultipleDelegatorsAccumulateVotesOnSameDelegatee() public {
+        vm.startPrank(owner);
+        token.transfer(alice, 30e18);
+        token.transfer(carol, 70e18);
+        vm.stopPrank();
+
+        vm.prank(alice);
+        token.delegate(bob);
+        assertEq(token.getVotes(bob), 30e18);
+
+        vm.prank(carol);
+        token.delegate(bob);
+
+        assertEq(token.balanceOf(alice), 30e18);
+        assertEq(token.balanceOf(carol), 70e18);
+        assertEq(token.balanceOf(bob), 0);
+        assertEq(token.getVotes(alice), 0);
+        assertEq(token.getVotes(carol), 0);
+        assertEq(token.getVotes(bob), 100e18);
+        assertEq(token.delegates(alice), bob);
+        assertEq(token.delegates(carol), bob);
     }
 
     function test_TransferMovesVotesBetweenDelegates() public {
@@ -62,6 +88,86 @@ contract VotingTokenTest is Test {
         assertEq(token.getVotes(alice), 40e18);
     }
 
+    /// @dev Alice 已委托给 Bob 后再转出：Bob 的票权随 Alice 余额减少
+    function test_TransferAfterDelegateReducesDelegateeVotes() public {
+        vm.prank(owner);
+        token.transfer(alice, 100e18);
+
+        vm.prank(alice);
+        token.delegate(bob);
+        assertEq(token.getVotes(bob), 100e18);
+
+        vm.prank(alice);
+        token.transfer(carol, 40e18);
+
+        assertEq(token.balanceOf(alice), 60e18);
+        assertEq(token.balanceOf(carol), 40e18);
+        assertEq(token.getVotes(bob), 60e18);
+        // carol 未委托：转出的 40 票休眠，不会自动落到 carol
+        assertEq(token.getVotes(carol), 0);
+        assertEq(token.getVotes(alice), 0);
+
+        // carol 转回 alice
+        vm.prank(carol);
+        token.transfer(alice, 40e18);
+        assertEq(token.balanceOf(alice), 100e18);
+        assertEq(token.balanceOf(carol), 0);
+        assertEq(token.getVotes(bob), 100e18);
+        assertEq(token.getVotes(carol), 0);
+        assertEq(token.getVotes(alice), 0);
+    }
+
+    /// @dev 同上，但用 permit 授权后由 spender `transferFrom` 转出
+    function test_PermitTransferFromAfterDelegateReducesDelegateeVotes() public {
+        uint256 alicePk = 0xA11CE;
+        address aliceSigner = vm.addr(alicePk);
+
+        vm.prank(owner);
+        token.transfer(aliceSigner, 100e18);
+
+        vm.prank(aliceSigner);
+        token.delegate(bob);
+        assertEq(token.getVotes(bob), 100e18);
+
+        _permit(alicePk, aliceSigner, carol, 40e18);
+
+        vm.prank(carol);
+        token.transferFrom(aliceSigner, carol, 40e18);
+
+        assertEq(token.balanceOf(aliceSigner), 60e18);
+        assertEq(token.balanceOf(carol), 40e18);
+        assertEq(token.getVotes(bob), 60e18);
+        assertEq(token.getVotes(carol), 0);
+        assertEq(token.getVotes(aliceSigner), 0);
+        assertEq(token.allowance(aliceSigner, carol), 0);
+        assertEq(token.nonces(aliceSigner), 1);
+    }
+
+    function _permit(uint256 pk, address owner_, address spender, uint256 value) private {
+        uint256 deadline = block.timestamp + 1 days;
+        bytes32 digest = _permitDigest(owner_, spender, value, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
+        token.permit(owner_, spender, value, deadline, v, r, s);
+    }
+
+    function _permitDigest(address owner_, address spender, uint256 value, uint256 deadline)
+        private
+        view
+        returns (bytes32)
+    {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                owner_,
+                spender,
+                value,
+                token.nonces(owner_),
+                deadline
+            )
+        );
+        return keccak256(abi.encodePacked("\x19\x01", token.DOMAIN_SEPARATOR(), structHash));
+    }
+
     function test_GetPastVotesReflectsCheckpointAtBlock() public {
         vm.prank(owner);
         token.delegate(owner);
@@ -75,13 +181,19 @@ contract VotingTokenTest is Test {
         token.transfer(alice, 10e18);
 
         assertEq(token.getPastVotes(owner, checkpointBlock), INITIAL);
+        assertEq(token.getPastVotes(alice, checkpointBlock), 0);
         assertEq(token.getVotes(owner), INITIAL - 10e18);
+        assertEq(token.getVotes(alice), 0);
+        vm.prank(alice);
+        token.delegate(alice);
+        assertEq(token.getVotes(alice), 10e18);
     }
 
     function test_MintOnlyOwner() public {
         vm.prank(owner);
         token.mint(alice, 50e18);
         assertEq(token.balanceOf(alice), 50e18);
+        assertEq(token.getVotes(alice), 0);
 
         vm.prank(alice);
         vm.expectRevert();
@@ -132,6 +244,7 @@ contract VotingTokenTest is Test {
         token.mint(alice, 50e18);
 
         assertEq(token.balanceOf(alice), 50e18);
+        assertEq(token.balanceOf(bob), 0);
         assertEq(token.getVotes(alice), 0);
         assertEq(token.getVotes(bob), 50e18);
     }
@@ -151,6 +264,25 @@ contract VotingTokenTest is Test {
         assertEq(token.getVotes(alice), 0);
         assertEq(token.getVotes(bob), 100e18);
         assertEq(token.delegates(alice), bob);
+        assertEq(token.balanceOf(alice), 100e18);
+        assertEq(token.balanceOf(bob), 0);
+    }
+
+    /// @dev OZ 无单独 undelegate：delegate(address(0)) 即撤销，余额保留、票权清零
+    function test_DelegateToZeroRevokesVotingPower() public {
+        vm.prank(owner);
+        token.transfer(alice, 100e18);
+
+        vm.prank(alice);
+        token.delegate(alice);
+        assertEq(token.getVotes(alice), 100e18);
+
+        vm.prank(alice);
+        token.delegate(address(0));
+
+        assertEq(token.balanceOf(alice), 100e18);
+        assertEq(token.getVotes(alice), 0);
+        assertEq(token.delegates(alice), address(0));
     }
 
     function test_PermitUpdatesAllowanceAndNonce() public {
@@ -202,11 +334,17 @@ contract VotingTokenTest is Test {
         vm.prank(owner);
         token.delegate(owner);
 
+        uint256 pastBlock = block.number;
+
         // OZ: 只能查严格小于当前 clock 的 timepoint
         vm.expectRevert(
-            abi.encodeWithSelector(Votes.ERC5805FutureLookup.selector, block.number, uint48(block.number))
+            abi.encodeWithSelector(Votes.ERC5805FutureLookup.selector, pastBlock, uint48(pastBlock))
         );
-        token.getPastVotes(owner, block.number);
+        token.getPastVotes(owner, pastBlock);
+
+        // 推进区块后，同一 timepoint 变成「过去」，查询应成功
+        vm.roll(pastBlock + 1);
+        assertEq(token.getPastVotes(owner, pastBlock), INITIAL);
     }
 
     function testFuzz_SelfDelegateVotesEqualBalance(uint256 amount) public {
