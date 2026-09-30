@@ -5,6 +5,10 @@ import {Test} from "forge-std/Test.sol";
 import {Votes} from "openzeppelin-contracts/contracts/governance/utils/Votes.sol";
 import {VotingToken} from "../../src/voting/VotingToken.sol";
 
+/// @notice 本文件测的是「票权记账」，不是「对提案投票」。
+/// @dev `VotingToken` 是 ERC20Votes 治理代币：管谁有多少可投票权（delegate / getVotes / getPastVotes），
+///      不管把票投到哪个提案。没有 Governor，因此看不到 propose / castVote / 赞成反对。
+///      真正投票需另接 OpenZeppelin `Governor` + `GovernorVotes`。
 contract VotingTokenTest is Test {
     VotingToken internal token;
 
