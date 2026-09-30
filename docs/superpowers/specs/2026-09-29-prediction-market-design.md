@@ -4,6 +4,99 @@
 
 二元结果市场：每个问题有 YES / NO 两种结果份额。用户用任意 ERC20 抵押品 `split` 成等量 YES+NO，可在恒定乘积池中互相兑换，也可 `merge` 退回抵押品。截止后由 oracle（Owner 式地址）`resolve`，赢家按 1:1 份额兑付抵押品。Factory 可创建多个市场。目标是把「完整结果集 → AMM 定价 → 结算兑付」跑通，复杂度对齐本仓库 `option/` 模块。
 
+## 什么是 CPAMM
+
+**CPAMM** = **C**onstant **P**roduct **A**utomated **M**arket **M**aker（恒定乘积自动做市商），即 Uniswap V2 同款定价模型。
+
+核心不变量：池中两种资产的储备量乘积保持恒定（忽略手续费时）
+
+\[
+x \cdot y = k
+\]
+
+本市场里 \(x\) = `yesReserve`，\(y\) = `noReserve`。用户用 YES 换 NO（或反过来）时：
+
+1. 把 `amountIn`（扣 0.3% fee 后）加入对应储备
+2. 按上式算出另一侧要减少多少，即为 `amountOut`
+3. fee 留在池内不参与兑出，\(k\) 因此上升，收益归 LP
+
+相对订单簿：无需对手方挂单，价格由储备比例即时给出。教学上用它给 YES/NO 份额定价，而不是接外部预言机喂价。
+
+### `priceYes` 推导
+
+记 \(R_y\) = `yesReserve`，\(R_n\) = `noReserve`。忽略 fee，恒定乘积：
+
+\[
+R_y \cdot R_n = k \quad (k \text{ 为常数})
+\]
+
+#### 1. 有限笔交易的精确汇率
+
+用户用 NO 买 YES：从池中取走 \(\Delta_y > 0\) 份 YES，同时向池中注入 \(\Delta_n > 0\) 份 NO。交易后储备仍须满足乘积不变：
+
+\[
+(R_y - \Delta_y)\,(R_n + \Delta_n) = R_y R_n
+\]
+
+解出 \(\Delta_n\)：
+
+\[
+R_n + \Delta_n = \frac{R_y R_n}{R_y - \Delta_y}
+\implies
+\Delta_n
+= R_n\left(\frac{R_y}{R_y - \Delta_y} - 1\right)
+= R_n \cdot \frac{\Delta_y}{R_y - \Delta_y}
+\]
+
+于是「每买 1 份 YES 平均要付多少 NO」为：
+
+\[
+\frac{\Delta_n}{\Delta_y} = \frac{R_n}{R_y - \Delta_y}
+\]
+
+\(\Delta_y\) 越大，分母越小，单价越高（滑点）。
+
+#### 2. 即期汇率（交易量趋于 0）
+
+令 \(\Delta_y \to 0^+\)：
+
+\[
+\lim_{\Delta_y \to 0^+} \frac{\Delta_n}{\Delta_y} = \frac{R_n}{R_y}
+\]
+
+即：**边际上，1 份 YES 兑换 \(R_n / R_y\) 份 NO**。\(R_y\) 越小，YES 越贵。
+
+（若写成 \(\mathrm{d}R_n / \mathrm{d}R_y\)，\(\mathrm{d}\) 表示该极限下的无穷小增量，不是某个函数名。）
+
+#### 3. 归一化为抵押品价格
+
+`split`/`merge` 保证 **1 YES + 1 NO = 1 抵押品**，故以抵押品计价的公允价 \(P_y, P_n\) 满足完备性：
+
+\[
+P_y + P_n = 1 \tag{A}
+\]
+
+池内相对价格应等于即期汇率（YES 相对 NO 的兑价）：
+
+\[
+\frac{P_y}{P_n} = \frac{R_n}{R_y}
+\iff
+P_y = P_n \cdot \frac{R_n}{R_y} \tag{B}
+\]
+
+将 (B) 代入 (A)：
+
+\[
+P_n \cdot \frac{R_n}{R_y} + P_n = 1
+\implies
+P_n\left(\frac{R_n + R_y}{R_y}\right) = 1
+\implies
+P_n = \frac{R_y}{R_y + R_n},\qquad
+P_y = \frac{R_n}{R_y + R_n}
+\]
+
+合约（定点 1e18）：`priceYes = noReserve * 1e18 / (yesReserve + noReserve)`。
+
 ## 范围
 
 做：
@@ -64,7 +157,7 @@ PredictionMarket
 
 不变量（测试断言）：
 
-- swap 后 `yesReserve * noReserve` 不下降（fee 使 k 非减）
+- swap 后 `yesReserve * noReserve` 上升（fee 留池；断言用 ≥ 防舍入）
 - `split`/`merge` roundtrip 后用户抵押品与份额守恒（忽略他人活动）
 - resolve 后可 redeem 总量不超过合约抵押品余额；超额 redeem revert
 
@@ -126,7 +219,7 @@ PredictionMarket
 - 非 oracle resolve revert；二次 resolve revert
 - YES 赢 / NO 赢各自 redeem；输家 NothingToRedeem
 - resolve 后 LP 撤出再 redeem
-- fuzz：split/merge；swap 后 k 非减；redeem 不超过余额
+- fuzz：split/merge；swap 后 k 上升；redeem 不超过余额
 
 不测 OpenZeppelin ERC20 内部行为。
 
