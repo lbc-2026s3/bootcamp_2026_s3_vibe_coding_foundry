@@ -145,6 +145,8 @@ contract MyNFTTest is Test, IERC721Errors {
         assertEq(address(nft).balance, nft.MINT_PRICE() * 3);
     }
 
+    /// @notice 模糊测试。带参数的 test 函数不会手工传参，Forge 每次填一个随机数再跑一遍。
+    /// @param quantity 批量数量。bound 把它收进 11 到 1000；合约只允许 1 到 10。0 由另一个测试覆盖。
     function test_RevertWhen_MintBatchQuantityOutOfRange(uint256 quantity) public {
         quantity = bound(quantity, 11, 1000);
         vm.prank(alice);

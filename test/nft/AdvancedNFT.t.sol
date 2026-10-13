@@ -63,6 +63,8 @@ contract AdvancedNFTTest is Test, IERC721Errors {
         assertEq(nft.rarityCount(5), 1);
     }
 
+    /// @notice 模糊测试。带参数的 test 函数不会手工传参，Forge 每次填一个随机数再跑一遍。
+    /// @param rarity 稀有度。只保留 0 或大于 5 的值；1 到 5 会铸造成功，进不了 expectRevert。
     function test_RevertWhen_RarityOutOfRange(uint256 rarity) public {
         vm.assume(rarity == 0 || rarity > 5);
         vm.expectRevert(bytes("Invalid rarity"));

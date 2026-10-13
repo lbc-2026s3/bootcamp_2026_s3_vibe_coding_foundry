@@ -125,6 +125,8 @@ contract AdvancedMultiTokenTest is Test, IERC1155Errors {
         assertEq(token.uri(1), "");
     }
 
+    /// @notice 模糊测试。带参数的 test 函数不会手工传参，Forge 每次填一个随机地址再跑一遍。
+    /// @param caller 随机调用者。address(this) 是部署者兼 owner，必须排除，否则 createToken 会成功。
     function test_RevertWhen_NonOwnerCreates(address caller) public {
         vm.assume(caller != address(this));
         vm.prank(caller);
