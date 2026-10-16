@@ -173,4 +173,13 @@ abstract contract BaseScript is Script {
         // 广播结束后再写 deployments / 打日志，避免和 forge tx 摘要交错
         _flushPendingSaves();
     }
+
+    /// @notice 用调用方传入的私钥广播。`deployer` 取该私钥对应地址，而不是广播前的 `msg.sender`。
+    modifier broadcasterWith(uint256 privateKey) {
+        deployer = vm.addr(privateKey);
+        vm.startBroadcast(privateKey);
+        _;
+        vm.stopBroadcast();
+        _flushPendingSaves();
+    }
 }
