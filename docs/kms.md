@@ -1,10 +1,58 @@
 # KMS：用云上的钥匙签以太坊交易
 
-这段资料写的是一个 `KMSSigner`。它继承 ethers 的 `Signer`，用来替换平时的 `new ethers.Wallet(私钥, provider)`。私钥在 AWS KMS 里生成，签摘要的时候只有 32 字节摘要出服务器，私钥不出 KMS。
+这段资料写的是一个 `KMSSigner`。它继承 ethers 的 `Signer`，用来替换平时的 `new ethers.Wallet(私钥, provider)`。私钥在 AWS KMS 里生成，签名时私钥不出 KMS。服务器先在本地把交易收成 32 字节的 keccak 摘要，只把这段摘要送出去；KMS 对它做 ECDSA，返回的是签名（DER 编码的 `r` 和 `s`，大约 70 字节）。那 32 字节是送去签的摘要，不是签名本身。
 
 Google Cloud KMS、Azure Key Vault 换的是「把摘要送去签名」那一次 API。地址算法、收 `s`、试出 recovery id，三家一样。
 
 官方参考：[AWS KMS Sign](https://docs.aws.amazon.com/kms/latest/APIReference/API_Sign.html)、[AWS：用 KMS 管以太坊账户（Part 2）](https://aws.amazon.com/blogs/database/part2-use-aws-kms-to-securely-manage-ethereum-accounts/)、[Azure Key Vault 密钥类型](https://learn.microsoft.com/en-us/azure/key-vault/keys/about-keys-details)。
+
+---
+
+## 你的服务器和云厂商各管一段
+
+发一笔交易要经过三处。私钥只在云厂商的 KMS 里。你的服务器负责把交易变成摘要、把签名拼回去、再广播。以太坊节点只收已经签好的交易，它和 KMS 不是同一家。
+
+```mermaid
+flowchart TB
+  subgraph server [你的服务器]
+    tx["1. 向节点问 nonce、gas，编码未签名交易"]
+    digest["2. keccak256，得到 32 字节摘要"]
+    assemble["4. 拆出 r 和 s，试出 v，拼进原交易"]
+    tx --> digest
+    assemble --> raw["5. 已签名的原始交易"]
+  end
+
+  subgraph kms [云厂商 KMS]
+    sign["3. 用只存在这里的 secp256k1 私钥，对这 32 字节做 ECDSA"]
+  end
+
+  subgraph chain [以太坊节点]
+    verify["6. ecrecover 验签，进入 mempool"]
+  end
+
+  digest -->|"Sign：送出摘要"| sign
+  sign -->|"返回 DER 签名，约 70 字节"| assemble
+  raw -->|"广播"| verify
+```
+
+跨过你和云厂商之间的只有两次调用：
+
+| 方向 | 内容 | 字节 |
+| --- | --- | --- |
+| 服务器 → KMS | keccak 摘要。交易里的 `to`、`value`、nonce 留在服务器 | 32 |
+| KMS → 服务器 | 签名，DER 编码的 `r` 和 `s` | 大约 70 |
+
+KMS 拿到摘要就签名，不组装交易，也不把交易发上链。第 6 步是你的服务器拿着拼好的原始交易，通过 `provider` 发给节点。这个节点可以是你自己的，也可以是 Alchemy 这类 RPC，它看不到 KMS 里的私钥。
+
+各处留下的东西：
+
+| | 你的服务器 | 云厂商 KMS | 以太坊节点 |
+| --- | --- | --- | --- |
+| 拿在手里 | 交易字段、32 字节摘要、拼好的原始交易、调用 KMS 的云账号凭证 | secp256k1 私钥 | 已签名交易和链上状态 |
+| 算出来给别人 | 摘要、最终的原始交易 | DER 签名；另外可导出公钥 | 打包结果 |
+| 问地址时 | 用公钥自己算 `keccak256(x‖y)` 的后 20 字节 | `GetPublicKey` 只给出公钥 | 按这个地址收交易 |
+
+云账号凭证（AWS 的 access key，或挂在这台机器上的 IAM 角色）在你的服务器上。它用来向厂商证明「可以让这把钥匙签一下」，本身不是以太坊私钥。磁盘被拷走时，拷走的是这套凭证和业务代码，拷不走私钥。对方要能接着签，还得拿这套凭证通过厂商的鉴权。
 
 ---
 
@@ -20,7 +68,7 @@ Google Cloud KMS、Azure Key Vault 换的是「把摘要送去签名」那一次
       3. provider.broadcastTransaction(raw)
 ```
 
-本地钱包在第 2 步用内存里的私钥做 ECDSA。`KMSSigner` 在第 2 步把摘要交给 KMS。`sendTransaction` 能直接用，是因为第 1 步和第 3 步在基类里。
+普通 `Wallet` 在 `signTransaction` 里用本进程内存里的私钥做 ECDSA，私钥就在你的服务器上。`KMSSigner` 把这一步换成图里的第 3 步：摘要交给云厂商。问 nonce 和广播仍在基类里，发生在你的服务器和以太坊节点之间。
 
 这和社交恢复钱包是两件事。社交恢复管的是链上「这把钥匙丢了，守护者怎么换主人」。KMS 管的是服务器发交易时，私钥不要落在磁盘或环境变量里。
 
@@ -210,4 +258,4 @@ KMS 保证的是私钥复制不走。签过的交易、公钥、地址都是公�
 
 能调用 `kms:Sign` 的身份，效果和拿着私钥一样：可以对任意摘要签名。收紧的办法是钥匙策略和 IAM，只放行这一台服务的角色，并且可以关掉这把钥匙。钥匙一旦被关掉，新的签名停在 KMS，已经广播的交易不受影响。
 
-对比本地私钥文件：文件被拷走之后，你删掉服务器上的副本，拷走的那份还能继续签。KMS 没有这份副本可以拷。
+对比把私钥文件放在你的服务器上：文件被拷走之后，删掉服务器上的副本，拷走的那份还能继续签。KMS 这边没有这份副本可以拷。对方拿到的是云账号凭证，停掉这把钥匙或撤掉 IAM 权限，新的签名就停了。
