@@ -73,13 +73,34 @@ contract EventLabTest is Test {
         assertEq(item.name, "widget");
     }
 
-    function test_emitSampleEmitsThreeLogs() public {
+    function test_anonymousEventOmitsSignatureTopic() public {
+        address account = address(0xBEEF);
+        bytes32 tag = bytes32("tag");
+        bytes32 signature = keccak256("AnonymousIndexed(address,uint256,bytes32,bool)");
+
+        vm.recordLogs();
+        lab.emitAnonymousIndexed(account, 42, tag, true);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        assertEq(logs.length, 1);
+        assertEq(logs[0].topics.length, 4);
+        assertTrue(logs[0].topics[0] != signature);
+        assertEq(logs[0].topics[0], bytes32(uint256(uint160(account))));
+        assertEq(logs[0].topics[1], bytes32(uint256(42)));
+        assertEq(logs[0].topics[2], tag);
+        assertEq(logs[0].topics[3], bytes32(uint256(1)));
+        assertEq(logs[0].data.length, 0);
+    }
+
+    function test_emitSampleEmitsAllLogs() public {
         vm.recordLogs();
         lab.emitSample();
         Vm.Log[] memory logs = vm.getRecordedLogs();
-        assertEq(logs.length, 3);
+        assertEq(logs.length, 4);
         assertEq(logs[0].topics[1], bytes32(uint256(lab.SAMPLE_AMOUNT())));
         assertEq(logs[1].topics[1], keccak256(bytes(lab.SAMPLE_NOTE())));
         assertEq(logs[1].topics[2], keccak256(lab.SAMPLE_BLOB()));
+        assertEq(logs[3].topics[0], bytes32(uint256(uint160(address(this)))));
+        assertEq(logs[3].topics.length, 4);
     }
 }

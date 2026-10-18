@@ -25,6 +25,7 @@ contract DeployEventLab is BaseScript {
         ids[1] = 2;
         ids[2] = 3;
         lab.emitReferenceIndexed(ids, lab.SAMPLE_ITEM_ID(), lab.SAMPLE_ITEM_NAME());
+        lab.emitAnonymousIndexed(deployer, lab.SAMPLE_AMOUNT(), lab.SAMPLE_TAG(), true);
 
         lab.emitSample();
     }
