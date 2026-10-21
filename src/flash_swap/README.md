@@ -23,7 +23,7 @@
 | PoolA | 借入侧，`borrowFactory` | 100_000 | 200_000 | 1 MT1 = 2 MT2 |
 | PoolB | 卖出侧，`sellFactory` | 100_000 | 100_000 | 1 MT1 = 1 MT2 |
 
-MT2 在 PoolA 更贵（换 1 个 MT2 要付更多 MT1）。从贵的池借出 MT2，到便宜的池换成 MT1，再用 MT1 还给贵的池，多出来的 MT1 就是利润。
+MT2 在 PoolA 更便宜：1 MT2 大约只要 0.5 MT1；在 PoolB 更贵：1 MT2 大约要 1 MT1。从便宜的池借出 MT2，到贵的池换成 MT1，再用较少的 MT1 还给 PoolA，多出来的 MT1 就是利润。
 
 ```mermaid
 sequenceDiagram

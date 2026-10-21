@@ -78,6 +78,8 @@ contract FlashSwapArbitrage is IUniswapV2Callee {
         address[] memory repayPath = new address[](2);
         repayPath[0] = repayToken;
         repayPath[1] = borrowToken;
+        // getAmountsIn 从路径末尾往前填：amounts[last] 是想换出的数量，amounts[0] 是路径起点要投入的数量。
+        // 这里 path 只有 [repayToken, borrowToken] 两跳，[1] 就是传入的 borrowAmount，只要 [0]（应付的 repayToken）。
         uint256 amountRequired = UniswapV2Library.getAmountsIn(borrowFactory, borrowAmount, repayPath)[0];
 
         // 卖出侧：直接在 sellFactory 的 pair 上用 borrowToken 换 repayToken
