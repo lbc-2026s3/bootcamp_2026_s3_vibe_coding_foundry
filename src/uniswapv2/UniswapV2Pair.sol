@@ -84,14 +84,17 @@ contract UniswapV2Pair is UniswapV2ERC20 {
     /// @notice 用当前余额更新储备；每个区块首次调用时累加 TWAP 价格累加器。
     function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
         require(balance0 <= type(uint112).max && balance1 <= type(uint112).max, 'UniswapV2: OVERFLOW');
-        uint32 blockTimestamp = uint32(block.timestamp % 2**32); // 当前时间截成 32 位
+        uint32 blockTimestamp = uint32(block.timestamp % 2**32); // 只留低 32 位，约每 136 年（2^32 秒）从 0 重新计
         uint32 timeElapsed;
+        // 回绕后新时间戳数值更小，0.8 的减法会下溢 revert。unchecked 按模 2^32 相减：
+        // 上次 2^32-5、这次 10 → 差为 15，仍是真实经过的秒数。两次更新间隔短于 136 年时这个差是准的。
         unchecked {
-            timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired（uint32 溢出是刻意的）
+            timeElapsed = blockTimestamp - blockTimestampLast;
         }
         // timeElapsed > 0 可以确保同一个区块内只计算一次 TWAP 价格累加器
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
-            // * never overflows, and + overflow is desired
+            // 价格是 UQ112x112（224 位）乘 timeElapsed（32 位），积放得进 uint256。
+            // 累加进 price*CumulativeLast 时 uint256 可能回绕；预言机只取两次读数之差，模 2^256 的差仍是这段增量。
             unchecked {
                 // 用更新前的储备计算 TWAP 价格累加器
                 price0CumulativeLast += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
