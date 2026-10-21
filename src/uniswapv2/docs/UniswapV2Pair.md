@@ -149,7 +149,16 @@ require(balance0Adjusted * balance1Adjusted >= _reserve0 * _reserve1 * 1000**2, 
 
 | 场景 | LP 数量 |
 |------|---------|
-| 首池（`totalSupply == 0`） | `sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY`；`MINIMUM_LIQUIDITY` 铸给 `address(0)` 永久锁定 |
-| 后续 | `min(amount0 * totalSupply / reserve0, amount1 * totalSupply / reserve1)`，按较小比例避免稀释另一边 |
+| 首池（`totalSupply == 0`） | \(\sqrt{amount0 \cdot amount1} - \texttt{MINIMUM\_LIQUIDITY}\)；`MINIMUM_LIQUIDITY` 铸给 `address(0)` 永久锁定 |
+| 后续 | 见下方公式，按较小比例避免稀释另一边 |
+
+后续加池（`UniswapV2Pair.sol` 的 `mint`）：
+
+\[
+liquidity = \min\left(
+  \frac{amount0 \cdot totalSupply}{reserve0},\;
+  \frac{amount1 \cdot totalSupply}{reserve1}
+\right)
+\]
 
 流程：`_mintFee` → 给用户 `_mint(to, liquidity)` → `_update` → 若 `feeOn` 更新 `kLast`。
