@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="500" viewBox="0 0 860 500" role="img">
+  <title>&#x4E09;&#x4E2A;&#x5C0F;&#x65F6;&#x7684;&#x4E09;&#x6839; K &#x7EBF;</title>
+  <desc>10&#x70B9;&#x5230;11&#x70B9;&#x662F;&#x4E0A;&#x4E0B;&#x5F71;&#x7EBF;&#x5F88;&#x957F;&#x7684;&#x9633;&#x7EBF;&#xFF0C;11&#x70B9;&#x5230;12&#x70B9;&#x662F;&#x9634;&#x7EBF;&#xFF0C;12&#x70B9;&#x5230;13&#x70B9;&#x662F;&#x65B9;&#x5757;&#x8F83;&#x957F;&#x7684;&#x9633;&#x7EBF;&#x3002;</desc>
+  <rect width="860" height="500" rx="12" fill="#fffefb" stroke="#e7e5e4"/>
+  <text x="48" y="34" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="16" font-weight="600" fill="#1c1917">&#x4E09;&#x4E2A;&#x5C0F;&#x65F6;&#xFF0C;&#x4ECE;&#x5DE6;&#x5230;&#x53F3;</text>
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="12" fill="#78716c" text-anchor="end">
+    <text x="52" y="68">2100</text>
+    <text x="52" y="118">2070</text>
+    <text x="52" y="168">2040</text>
+    <text x="52" y="235">2000</text>
+    <text x="52" y="268">1980</text>
+    <text x="52" y="368">1920</text>
+  </g>
+  <g stroke="#f5f5f4">
+    <line x1="64" y1="64" x2="820" y2="64"/>
+    <line x1="64" y1="114" x2="820" y2="114"/>
+    <line x1="64" y1="364" x2="820" y2="364"/>
+  </g>
+  <g stroke="#d6d3d1" stroke-dasharray="3 4">
+    <line x1="64" y1="164" x2="820" y2="164"/>
+    <line x1="64" y1="231" x2="820" y2="231"/>
+    <line x1="64" y1="264" x2="820" y2="264"/>
+  </g>
+  <line x1="64" y1="52" x2="64" y2="364" stroke="#d6d3d1"/>
+
+  <line x1="190" y1="64" x2="190" y2="364" stroke="#1c1917" stroke-width="2"/>
+  <rect x="164" y="164" width="52" height="67" fill="#15803d"/>
+
+  <line x1="430" y1="131" x2="430" y2="297" stroke="#1c1917" stroke-width="2"/>
+  <rect x="404" y="164" width="52" height="100" fill="#dc2626"/>
+
+  <line x1="670" y1="97" x2="670" y2="281" stroke="#1c1917" stroke-width="2"/>
+  <rect x="644" y="114" width="52" height="150" fill="#15803d"/>
+
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c" text-anchor="middle">
+    <text x="190" y="396">10:00&#x2013;11:00</text>
+    <text x="190" y="418" fill="#15803d" font-weight="600">&#x9633;&#x7EBF;  +40</text>
+    <text x="430" y="396">11:00&#x2013;12:00</text>
+    <text x="430" y="418" fill="#dc2626" font-weight="600">&#x9634;&#x7EBF;  &#x2212;60</text>
+    <text x="670" y="396">12:00&#x2013;13:00</text>
+    <text x="670" y="418" fill="#15803d" font-weight="600">&#x9633;&#x7EBF;  +90</text>
+  </g>
+  <text x="430" y="462" text-anchor="middle" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#57534e">&#x540E;&#x4E00;&#x6839;&#x7684;&#x5F00;&#x76D8; = &#x524D;&#x4E00;&#x6839;&#x7684;&#x6536;&#x76D8;&#xFF1A;2040&#xFF0C;&#x7136;&#x540E; 1980</text>
+</svg>
