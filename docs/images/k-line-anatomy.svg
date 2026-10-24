@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="460" viewBox="0 0 880 460" role="img">
+  <title>&#x9633;&#x7EBF;&#x548C;&#x9634;&#x7EBF;&#x7684;&#x7ED3;&#x6784;</title>
+  <desc>&#x5DE6;&#x8FB9;&#x9633;&#x7EBF;&#x6536;&#x76D8;&#x5728;&#x5B9E;&#x4F53;&#x4E0A;&#x6CBF;&#x3001;&#x5F00;&#x76D8;&#x5728;&#x4E0B;&#x6CBF;&#x3002;&#x53F3;&#x8FB9;&#x9634;&#x7EBF;&#x5F00;&#x76D8;&#x5728;&#x5B9E;&#x4F53;&#x4E0A;&#x6CBF;&#x3001;&#x6536;&#x76D8;&#x5728;&#x4E0B;&#x6CBF;&#x3002;&#x7AD6;&#x7EBF;&#x4E24;&#x7AEF;&#x662F;&#x6700;&#x9AD8;&#x4EF7;&#x548C;&#x6700;&#x4F4E;&#x4EF7;&#x3002;</desc>
+  <rect width="880" height="460" rx="12" fill="#fffefb" stroke="#e7e5e4"/>
+  <line x1="440" y1="28" x2="440" y2="392" stroke="#e7e5e4"/>
+  <text x="64" y="40" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="18" font-weight="600" fill="#15803d">&#x9633;&#x7EBF;</text>
+  <text x="118" y="40" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#57534e">&#x6536;&#x76D8;&#x4EF7;&#x9AD8;&#x4E8E;&#x5F00;&#x76D8;&#x4EF7;</text>
+  <text x="500" y="40" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="18" font-weight="600" fill="#dc2626">&#x9634;&#x7EBF;</text>
+  <text x="554" y="40" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#57534e">&#x6536;&#x76D8;&#x4EF7;&#x4F4E;&#x4E8E;&#x5F00;&#x76D8;&#x4EF7;</text>
+  <line x1="250" y1="88" x2="250" y2="360" stroke="#1c1917" stroke-width="2"/>
+  <rect x="214" y="156" width="72" height="136" fill="#15803d"/>
+  <text x="168" y="126" text-anchor="end" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x4E0A;&#x5F71;&#x7EBF;</text>
+  <line x1="176" y1="122" x2="246" y2="122" stroke="#a8a29e"/>
+  <text x="168" y="230" text-anchor="end" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x5B9E;&#x4F53;</text>
+  <line x1="176" y1="226" x2="210" y2="226" stroke="#a8a29e"/>
+  <text x="168" y="330" text-anchor="end" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x4E0B;&#x5F71;&#x7EBF;</text>
+  <line x1="176" y1="326" x2="246" y2="326" stroke="#a8a29e"/>
+  <text x="300" y="92" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#1c1917">&#x6700;&#x9AD8;&#x4EF7;</text>
+  <line x1="254" y1="88" x2="294" y2="88" stroke="#a8a29e"/>
+  <text x="300" y="160" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" font-weight="600" fill="#15803d">&#x6536;&#x76D8;&#x4EF7;</text>
+  <line x1="286" y1="156" x2="294" y2="156" stroke="#15803d"/>
+  <text x="300" y="296" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#1c1917">&#x5F00;&#x76D8;&#x4EF7;</text>
+  <line x1="286" y1="292" x2="294" y2="292" stroke="#a8a29e"/>
+  <text x="300" y="364" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#1c1917">&#x6700;&#x4F4E;&#x4EF7;</text>
+  <line x1="254" y1="360" x2="294" y2="360" stroke="#a8a29e"/>
+  <line x1="640" y1="88" x2="640" y2="360" stroke="#1c1917" stroke-width="2"/>
+  <rect x="604" y="150" width="72" height="150" fill="#dc2626"/>
+  <text x="558" y="122" text-anchor="end" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x4E0A;&#x5F71;&#x7EBF;</text>
+  <line x1="566" y1="118" x2="636" y2="118" stroke="#a8a29e"/>
+  <text x="558" y="230" text-anchor="end" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x5B9E;&#x4F53;</text>
+  <line x1="566" y1="226" x2="600" y2="226" stroke="#a8a29e"/>
+  <text x="558" y="334" text-anchor="end" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x4E0B;&#x5F71;&#x7EBF;</text>
+  <line x1="566" y1="330" x2="636" y2="330" stroke="#a8a29e"/>
+  <text x="690" y="92" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#1c1917">&#x6700;&#x9AD8;&#x4EF7;</text>
+  <line x1="644" y1="88" x2="684" y2="88" stroke="#a8a29e"/>
+  <text x="690" y="154" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#1c1917">&#x5F00;&#x76D8;&#x4EF7;</text>
+  <line x1="676" y1="150" x2="684" y2="150" stroke="#a8a29e"/>
+  <text x="690" y="304" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" font-weight="600" fill="#dc2626">&#x6536;&#x76D8;&#x4EF7;</text>
+  <line x1="676" y1="300" x2="684" y2="300" stroke="#dc2626"/>
+  <text x="690" y="364" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#1c1917">&#x6700;&#x4F4E;&#x4EF7;</text>
+  <line x1="644" y1="360" x2="684" y2="360" stroke="#a8a29e"/>
+  <line x1="28" y1="396" x2="852" y2="396" stroke="#e7e5e4"/>
+  <text x="440" y="428" text-anchor="middle" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#44403c">&#x5B9E;&#x4F53;&#x4E0A;&#x6CBF;&#x662F;&#x5F00;&#x76D8;&#x548C;&#x6536;&#x76D8;&#x91CC;&#x8F83;&#x9AD8;&#x7684;&#x90A3;&#x4E2A;&#xFF0C;&#x4E0B;&#x6CBF;&#x662F;&#x8F83;&#x4F4E;&#x7684;&#x90A3;&#x4E2A;&#x3002;&#x7AD6;&#x7EBF;&#x9876;&#x7AEF;&#x662F;&#x6700;&#x9AD8;&#x4EF7;&#xFF0C;&#x5E95;&#x7AEF;&#x662F;&#x6700;&#x4F4E;&#x4EF7;&#x3002;</text>
+</svg>

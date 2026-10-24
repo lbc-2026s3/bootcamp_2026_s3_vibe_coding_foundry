@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="600" viewBox="0 0 920 600" role="img">
+  <title>&#x56DB;&#x6839; 15 &#x5206;&#x949F; K &#x7EBF;&#x5408;&#x6210;&#x4E00;&#x6839; 1 &#x5C0F;&#x65F6; K &#x7EBF;</title>
+  <desc>&#x540C;&#x4E00;&#x5C0F;&#x65F6;&#x7684;&#x56DB;&#x6839; 15 &#x5206;&#x949F;&#x7EBF;&#xFF1A;&#x5C0F;&#x9633;&#x3001;&#x62C9;&#x9AD8;&#x3001;&#x5927;&#x9634;&#x3001;&#x62C9;&#x56DE;&#x3002;&#x5408;&#x6210;&#x540E;&#x7684; 1 &#x5C0F;&#x65F6;&#x7EBF;&#x662F;&#x4E00;&#x6839;&#x5B9E;&#x4F53;&#x8F83;&#x77ED;&#x3001;&#x4E0A;&#x4E0B;&#x90FD;&#x6709;&#x5F71;&#x7EBF;&#x7684;&#x9633;&#x7EBF;&#x3002;&#x6700;&#x9AD8;&#x5728;&#x7B2C;&#x4E8C;&#x6839;&#xFF0C;&#x6700;&#x4F4E;&#x5728;&#x7B2C;&#x4E09;&#x6839;&#x3002;</desc>
+  <rect width="920" height="600" rx="12" fill="#fffefb" stroke="#e7e5e4"/>
+  <text x="48" y="32" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="16" font-weight="600" fill="#1c1917">&#x56DB;&#x6839; 15 &#x5206;&#x949F;</text>
+  <text x="500" y="32" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="16" font-weight="600" fill="#1c1917">&#x5408;&#x6210;&#x4E00;&#x6839; 1 &#x5C0F;&#x65F6;</text>
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="12" fill="#78716c">
+    <text x="40" y="60" text-anchor="end">2100</text>
+    <text x="40" y="180" text-anchor="end">2040</text>
+    <text x="40" y="260" text-anchor="end">2000</text>
+    <text x="40" y="360" text-anchor="end">1950</text>
+    <text x="40" y="420" text-anchor="end">1920</text>
+  </g>
+  <g stroke="#f5f5f4">
+    <line x1="52" y1="56" x2="860" y2="56"/>
+    <line x1="52" y1="356" x2="860" y2="356"/>
+    <line x1="52" y1="416" x2="860" y2="416"/>
+  </g>
+  <g stroke="#d6d3d1" stroke-dasharray="3 4">
+    <line x1="52" y1="176" x2="860" y2="176"/>
+    <line x1="52" y1="256" x2="860" y2="256"/>
+  </g>
+  <line x1="52" y1="48" x2="52" y2="416" stroke="#d6d3d1"/>
+  <line x1="130" y1="196" x2="130" y2="276" stroke="#1c1917" stroke-width="2"/>
+  <rect x="114" y="216" width="32" height="40" fill="#15803d"/>
+  <line x1="230" y1="56" x2="230" y2="236" stroke="#1c1917" stroke-width="2"/>
+  <rect x="214" y="96" width="32" height="120" fill="#15803d"/>
+  <line x1="330" y1="76" x2="330" y2="416" stroke="#1c1917" stroke-width="2"/>
+  <rect x="314" y="96" width="32" height="260" fill="#dc2626"/>
+  <line x1="430" y1="156" x2="430" y2="376" stroke="#1c1917" stroke-width="2"/>
+  <rect x="414" y="176" width="32" height="180" fill="#15803d"/>
+  <text x="500" y="250" text-anchor="middle" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="14" fill="#57534e">&#x5408;&#x6210; &#x2192;</text>
+  <line x1="640" y1="56" x2="640" y2="416" stroke="#1c1917" stroke-width="2"/>
+  <rect x="616" y="176" width="48" height="80" fill="#15803d"/>
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#1c1917">
+    <line x1="666" y1="56" x2="688" y2="56" stroke="#a8a29e"/>
+    <text x="696" y="60">2100 &#x6700;&#x9AD8;</text>
+    <line x1="664" y1="176" x2="688" y2="176" stroke="#15803d"/>
+    <text x="696" y="180" fill="#15803d" font-weight="600">2040 &#x6536;&#x76D8;</text>
+    <line x1="664" y1="256" x2="688" y2="256" stroke="#a8a29e"/>
+    <text x="696" y="260">2000 &#x5F00;&#x76D8;</text>
+    <line x1="666" y1="416" x2="688" y2="416" stroke="#a8a29e"/>
+    <text x="696" y="420">1920 &#x6700;&#x4F4E;</text>
+  </g>
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="12" fill="#78716c" text-anchor="middle">
+    <text x="130" y="446">10:00</text>
+    <text x="230" y="446">10:15</text>
+    <text x="330" y="446">10:30</text>
+    <text x="430" y="446">10:45</text>
+    <text x="640" y="446">10:00&#x2013;11:00</text>
+  </g>
+  <text x="48" y="478" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" font-weight="600" fill="#44403c">&#x6210;&#x4EA4;&#x91CF;</text>
+  <rect x="114" y="529" width="32" height="19" fill="#15803d"/>
+  <rect x="214" y="519" width="32" height="29" fill="#15803d"/>
+  <rect x="314" y="484" width="32" height="64" fill="#dc2626"/>
+  <rect x="414" y="513" width="32" height="35" fill="#15803d"/>
+  <text x="640" y="520" text-anchor="middle" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="13" fill="#44403c">&#x56DB;&#x6839;&#x91CF;&#x76F8;&#x52A0; = 920</text>
+  <text x="640" y="542" text-anchor="middle" font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="12" fill="#78716c">&#x5C0F;&#x65F6;&#x56FE;&#x4E0A;&#x901A;&#x5E38;&#x53EA;&#x5269;&#x8FD9;&#x4E00;&#x6839;&#x67F1;</text>
+  <g font-family="PingFang SC, Hiragino Sans GB, Noto Sans SC, sans-serif" font-size="11" fill="#78716c" text-anchor="middle">
+    <text x="130" y="572">120</text>
+    <text x="230" y="572">180</text>
+    <text x="330" y="572">400</text>
+    <text x="430" y="572">220</text>
+  </g>
+</svg>
