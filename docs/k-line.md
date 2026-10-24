@@ -1,6 +1,6 @@
 # K 线：一个时间窗口里的四个价格
 
-K 线把一段时间里的价格收成四个数：开盘、最高、最低、收盘。英文图上叫 candlestick。Binance、TradingView、DexScreener 上那些红绿柱就是这个。
+K 线把一段时间里的价格收成四个数：开盘、最高、最低、收盘。英文图上叫 candlestick 美/ˈkændlstɪk/ 蜡烛台。Binance、TradingView、DexScreener 上那些红绿柱就是这个。
 
 四个数的定义：
 
