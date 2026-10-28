@@ -96,6 +96,7 @@ function onCanonicalBlock(block):
 3. 让受害者按更差的价格成交。
 4. 在它后面卖出，把价差换成自己的利润。
 
+计算过程参考：[三明治攻击计算过程](https://my.feishu.cn/wiki/TxeSwJ37pifDPAkL0C7cXNLFn6b)
 用常量乘积池看一眼差在哪。池子有 100 ETH 和 100000 TOKEN，`k = 10_000_000`，手续费先当成 0。
 
 用户拿 10 ETH 买 TOKEN，单独成交能拿到约 9091 TOKEN。有人先用 5 ETH 买入，池子变成 105 ETH / 95238 TOKEN。用户这 10 ETH 只能拿到约 8282 TOKEN。攻击者再把刚买到的 TOKEN 卖回，拿回约 5.97 ETH。多出来的约 0.97 ETH 来自用户少拿到的 TOKEN。用户的滑点上限越宽，这段空间越大。
