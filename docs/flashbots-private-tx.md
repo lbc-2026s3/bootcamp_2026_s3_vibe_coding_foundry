@@ -136,20 +136,21 @@ Protect 要求 **priority fee 严格大于 0**。小费为 0 的交易不会转�
 钱包把 RPC 换成 Protect 之后，发出去的仍是普通的 `eth_sendRawTransaction`。Protect 在服务端把它当成私有交易处理。读请求（余额、`eth_call`）还是普通 JSON-RPC。
 
 ```mermaid
-flowchart LR
+%%{init: {"flowchart": {"htmlLabels": false, "wrappingWidth": 200}}}%%
+flowchart TB
   sign[用户签名] --> choice{送到哪}
   choice -->|公开 RPC| gossip[节点间广播]
   gossip --> mem[公开 mempool]
-  mem --> bots[机器人解码并模拟]
-  bots --> sandwich[在前面和后面插入]
-  choice -->|Protect RPC| node[MEV-Share 节点]
-  node --> hints[只把 hint 给 searcher]
-  node --> builders[完整交易给选定的 builder]
-  hints --> backrun[searcher 只能提交 backrun]
+  mem --> bots["机器人解码<br/>并模拟"]
+  bots --> sandwich["在前面和<br/>后面插入"]
+  choice -->|Protect RPC| node["MEV-Share<br/>节点"]
+  node --> hints["只把 hint<br/>给 searcher"]
+  node --> builders["完整交易给<br/>选定的 builder"]
+  hints --> backrun["searcher 只能<br/>提交 backrun"]
   backrun --> builders
   builders --> block[排进区块体]
-  block --> seal[proposer 签区块头]
-  seal --> public[区块广播，交易这时才公开]
+  block --> seal["proposer<br/>签区块头"]
+  seal --> public["区块广播，<br/>交易这时才公开"]
 ```
 
 上链之后 calldata 是公开的。保护期是「proposer 签名之前」。顺序已经写进区块头承诺的交易根里，公开 mempool 里的机器人插不进去。短重组理论上能把这个区块推翻再重排。PoS 上这种重组贵，而且不常见。私有交易没有把重组这件事消掉。
